@@ -16,7 +16,7 @@ namespace GoodTimeStudio.MyPhone.OBEX.Headers
 
         public ushort HeaderTotalLength { get => (ushort)(BufferLength + sizeof(HeaderId) + sizeof(ushort)); }
 
-        public byte[] Buffer { get; }
+        public byte[] Buffer { get; set; }
 
         public ObexHeaderEncoding Encoding { get => GetEncodingFromHeaderId(HeaderId); }
 
@@ -35,7 +35,11 @@ namespace GoodTimeStudio.MyPhone.OBEX.Headers
         }
 
         public ObexHeader(HeaderId headerId, int i) : this(headerId, i.ToBigEndianBytes())
-        { 
+        {
+        }
+
+        public ObexHeader(HeaderId headerId, long i) : this(headerId, i.ToBigEndianBytes())
+        {
         }
 
         public ObexHeader(HeaderId headerId, string text, bool nullTerminated, Encoding stringEncoding)

@@ -9,8 +9,8 @@ namespace GoodTimeStudio.MyPhone.OBEX
 {
     public class ObexClient
     {
-        private DataReader _reader;
-        private DataWriter _writer;
+        protected DataReader _reader;
+        protected DataWriter _writer;
 
         public bool Conntected { get; private set; } = false;
 

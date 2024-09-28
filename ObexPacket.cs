@@ -19,7 +19,8 @@ namespace GoodTimeStudio.MyPhone.OBEX
 
         public Dictionary<HeaderId, ObexHeader> Headers;
 
-        public byte[] BodyBuffer { 
+        public byte[] BodyBuffer
+        {
             get => _bodyBuffer ?? throw new ObexException("Body does not exists");
             set => _bodyBuffer = value;
         }
@@ -51,6 +52,20 @@ namespace GoodTimeStudio.MyPhone.OBEX
             {
                 throw new ObexHeaderNotFoundException(headerId);
             }
+        }
+
+        public void AddHeader(ObexHeader header)
+        {
+            Headers.Add(header.HeaderId, header);
+        }
+
+        public void ReplaceHeader(HeaderId oldHeaderId, ObexHeader newHeader)
+        {
+            if (newHeader == null)
+                throw new ArgumentNullException(nameof(newHeader));
+
+            Headers.Remove(oldHeaderId);
+            Headers.Add(newHeader.HeaderId, newHeader);
         }
 
         public T GetBodyContent<T>(IBufferContentInterpreter<T> interpreter)
@@ -107,7 +122,6 @@ namespace GoodTimeStudio.MyPhone.OBEX
         {
             if (headerSize <= 0)
             {
-                Console.WriteLine("Header size to read is zero.");
                 return;
             }
 
@@ -148,11 +162,9 @@ namespace GoodTimeStudio.MyPhone.OBEX
                 throw new ObexException("The underlying socket was closed before we were able to read the whole data.");
             }
 
-            ObexOpcode opcode = new (reader.ReadByte());
+            ObexOpcode opcode = new(reader.ReadByte());
             T packet = new T();
             packet.Opcode = opcode;
-
-            Console.WriteLine($"ReadFromStream:: Opcode: {packet.Opcode}");
 
             loaded = await reader.LoadAsync(sizeof(ushort));
             if (loaded != sizeof(ushort))
@@ -161,7 +173,6 @@ namespace GoodTimeStudio.MyPhone.OBEX
             }
 
             packet.PacketLength = reader.ReadUInt16();
-            Console.WriteLine($"packet length: {packet.PacketLength}");
 
             uint extraFieldBits = await packet.ReadExtraField(reader);
             uint size = packet.PacketLength - (uint)sizeof(ObexOperation) - sizeof(ushort) - extraFieldBits;

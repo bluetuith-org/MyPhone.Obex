@@ -4,6 +4,13 @@ namespace GoodTimeStudio.MyPhone.OBEX.Extensions
 {
     public static class IntExtensions
     {
+        public static byte[] ToBigEndianBytes(this long i)
+        {
+            byte[] ret = new byte[sizeof(long)];
+            BinaryPrimitives.WriteInt64BigEndian(ret, i);
+            return ret;
+        }
+
         public static byte[] ToBigEndianBytes(this int i)
         {
             byte[] ret = new byte[sizeof(int)];

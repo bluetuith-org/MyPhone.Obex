@@ -10,12 +10,12 @@ namespace GoodTimeStudio.MyPhone.OBEX
 {
     public class ObexServer
     {
-        private DataReader _reader;
-        private DataWriter _writer;
+        protected DataReader _reader;
+        protected DataWriter _writer;
 
-        private ObexServiceUuid _serviceUuid;
+        protected ObexServiceUuid _serviceUuid;
 
-        private CancellationTokenSource _cts;
+        protected CancellationTokenSource _cts;
 
         public ObexServer(IInputStream inputStream, IOutputStream outputStream, ObexServiceUuid serviceUuid)
         {
@@ -25,7 +25,7 @@ namespace GoodTimeStudio.MyPhone.OBEX
             _cts = new CancellationTokenSource();
         }
 
-        public async Task Run()
+        public virtual async Task Run()
         {
             while (true)
             {
