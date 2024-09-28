@@ -1,20 +1,21 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFrameworks>net5.0-windows10.0.18362.0;net6.0-windows10.0.18362.0</TargetFrameworks>
-	  <LangVersion>9.0</LangVersion>
-	  <Nullable>enable</Nullable>
-	  <RootNamespace>GoodTimeStudio.MyPhone.OBEX</RootNamespace>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFrameworks>net7.0-windows10.0.19041.0</TargetFrameworks>
+		<LangVersion>9.0</LangVersion>
+		<Nullable>enable</Nullable>
+		<RootNamespace>GoodTimeStudio.MyPhone.OBEX</RootNamespace>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <None Include="..\.editorconfig" Link=".editorconfig" />
-  </ItemGroup>
+	<ItemGroup>
+		<None Include="..\.editorconfig" Link=".editorconfig" />
+	</ItemGroup>
 
-  <ItemGroup>
-
-		<!-- Compatibility for .NET piror to 5.0 -->
-		<PackageReference Condition="'$(TargetFramework)' == 'netstandard2.0'" Include="Microsoft.Windows.SDK.Contracts" Version="10.0.18362.2005" />
+	<ItemGroup>
+		<PackageReference Include="MimeTypes" Version="2.5.2">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
 		<PackageReference Include="NightOwl.MixERP.Net.VCards" Version="1.0.1" />
 		<PackageReference Condition="'$(TargetFramework)' == 'netstandard2.0'" Include="System.Runtime.InteropServices.WindowsRuntime" Version="4.3.0" />
 	</ItemGroup>
