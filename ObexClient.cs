@@ -36,20 +36,10 @@ namespace GoodTimeStudio.MyPhone.OBEX
             ObexConnectPacket packet = new ObexConnectPacket(targetService);
             var buf = packet.ToBuffer();
 
-            Console.WriteLine("Sending OBEX Connection request to server:");
-            Console.WriteLine(BitConverter.ToString(buf.ToArray()));
-            Console.WriteLine("Opcode: " + packet.Opcode);
-
             _writer.WriteBuffer(buf);
             await _writer.StoreAsync();
 
-            Console.WriteLine("Waiting reply packet...");
             ObexConnectPacket response = await ObexPacket.ReadFromStream<ObexConnectPacket>(_reader);
-
-            var bytes = response.ToBuffer().ToArray();
-            Console.WriteLine("Reply packet:");
-            Console.WriteLine(BitConverter.ToString(bytes));
-            Console.WriteLine($"ResponseCode: {response.Opcode}");
 
             if (response.Opcode.ObexOperation != ObexOperation.Success)
             {
@@ -93,21 +83,17 @@ namespace GoodTimeStudio.MyPhone.OBEX
             }
 
             ObexPacket? response = null;
-            int c = 0;
 
             using (MemoryStream bodyMemoryStream = new MemoryStream())
             {
                 do
                 {
-                    Console.WriteLine($"Sending request packet: {++c}");
                     var buf = req.ToBuffer();
-                    Console.WriteLine("Opcode: " + req.Opcode);
                     _writer.WriteBuffer(buf);
                     await _writer.StoreAsync();
 
                     ObexPacket subResponse;
                     subResponse = await ObexPacket.ReadFromStream(_reader);
-                    Console.WriteLine($"ResponseCode: {subResponse.Opcode}");
 
                     if (response == null)
                     {

@@ -51,7 +51,6 @@ namespace GoodTimeStudio.MyPhone.OBEX.Map
                     new AppParameter((byte)MasAppParamTagId.MaxListCount, maxListCount)).Build()
                 );
 
-            Console.WriteLine($"Sending GetMessageListing request ");
             ObexPacket resp = await RunObexRequestAsync(packet);
 
             XmlDocument xml = new XmlDocument();
@@ -60,12 +59,10 @@ namespace GoodTimeStudio.MyPhone.OBEX.Map
             xml.LoadXml(listingObj);
             XmlNodeList list = xml.SelectNodes("/MAP-msg-listing/msg/@handle");
             List<string> ret = new List<string>();
-            Console.WriteLine("Message handle list: ");
             foreach (XmlNode n in list)
             {
                 if (n.Value != null)
                 {
-                    Console.WriteLine(n.Value);
                     ret.Add(n.Value);
                 }
             }
@@ -103,7 +100,6 @@ namespace GoodTimeStudio.MyPhone.OBEX.Map
                     ).Build()
                 );
 
-            Console.WriteLine("Sending GetMessage request ");
 
             ObexPacket resp = await RunObexRequestAsync(packet);
 
@@ -144,7 +140,6 @@ namespace GoodTimeStudio.MyPhone.OBEX.Map
                 new ObexHeader(HeaderId.EndOfBody, 0x30)
                 );
 
-            Console.WriteLine("Sending RemoteNotificationRegister request");
             await RunObexRequestAsync(packet);
         }
 
@@ -158,7 +153,6 @@ namespace GoodTimeStudio.MyPhone.OBEX.Map
                     new AppParameter((byte)MasAppParamTagId.MASInstanceID, ObexServiceUuid.MessageAccess.Value)).Build()
                 );
 
-            Console.WriteLine($"Sending GetMASInstanceInformation request ");
             await RunObexRequestAsync(packet);
         }
 
@@ -189,7 +183,6 @@ namespace GoodTimeStudio.MyPhone.OBEX.Map
                 packet.Headers[HeaderId.ApplicationParameters] = builder.Build();
             }
 
-            Console.WriteLine("sending GetFolderList request");
 
             ObexPacket resp = await RunObexRequestAsync(packet);
 
@@ -198,12 +191,10 @@ namespace GoodTimeStudio.MyPhone.OBEX.Map
             xml.LoadXml(objStr);
             XmlNodeList list = xml.SelectNodes("/folder-listing/folder/@name");
             List<string> ret = new List<string>();
-            Console.WriteLine("Folder list: ");
             foreach (XmlNode n in list)
             {
                 if (n.Value != null)
                 {
-                    Console.WriteLine(n.Value);
                     ret.Add(n.Value);
                 }
             }
@@ -223,7 +214,6 @@ namespace GoodTimeStudio.MyPhone.OBEX.Map
                 new ObexHeader(HeaderId.EndOfBody, "test pushing message from MCE", true, Encoding.UTF8)
                 );
 
-            Console.WriteLine("sending PushMessage request ");
 
             await RunObexRequestAsync(packet);
         }

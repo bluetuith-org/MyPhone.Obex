@@ -24,8 +24,6 @@ namespace GoodTimeStudio.MyPhone.OBEX
 
         protected override ObexPacket? OnClientRequest(ObexPacket clientRequestPacket)
         {
-            Console.WriteLine("Opcode: " + clientRequestPacket.Opcode);
-
             if (clientRequestPacket.Opcode.ObexOperation == ObexOperation.Put)
             {
                 XmlDocument doc = new XmlDocument();

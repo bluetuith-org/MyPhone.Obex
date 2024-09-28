@@ -47,8 +47,6 @@ namespace GoodTimeStudio.MyPhone.OBEX
 
                 }
 
-                Console.WriteLine("Not support operation code: " + packet.Opcode);
-                Console.WriteLine("MSE should send Connect request first");
                 packet = new ObexPacket(new ObexOpcode(ObexOperation.ServiceUnavailable, true));
                 _writer.WriteBuffer(packet.ToBuffer());
             }
