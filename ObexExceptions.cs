@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Runtime.Serialization;
 
 namespace GoodTimeStudio.MyPhone.OBEX
 {
@@ -53,9 +52,9 @@ namespace GoodTimeStudio.MyPhone.OBEX
 
         public InvalidObexOpcodeException(byte rawOpcode) : this(rawOpcode, $"Invalid opcode {rawOpcode}")
         {
-        } 
+        }
 
-        public InvalidObexOpcodeException(byte rawOpcode, string message) : base(message) 
+        public InvalidObexOpcodeException(byte rawOpcode, string message) : base(message)
         {
             RawOpcode = rawOpcode;
         }

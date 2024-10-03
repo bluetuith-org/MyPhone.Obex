@@ -16,7 +16,7 @@ namespace GoodTimeStudio.MyPhone.OBEX.Pbap
 
         public PbapSupportedFeatures SupportedFeatures { get; private set; }
 
-        public Version? ProfileVersion { get; private set;}
+        public Version? ProfileVersion { get; private set; }
 
         public BluetoothPbapClientSession(BluetoothDevice bluetoothDevice) : base(bluetoothDevice, PHONE_BOOK_ACCESS_ID, ObexServiceUuid.PhonebookAccess)
         {
@@ -51,7 +51,7 @@ namespace GoodTimeStudio.MyPhone.OBEX.Pbap
                     SupportedFeatures = (PbapSupportedFeatures)0x3;
                 }
             }
-            
+
             return true;
         }
 

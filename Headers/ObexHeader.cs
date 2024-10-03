@@ -2,7 +2,6 @@
 using GoodTimeStudio.MyPhone.OBEX.Streams;
 using GoodTimeStudio.MyPhone.OBEX.Utilities;
 using System;
-using System.Collections.Generic;
 using System.Text;
 using Windows.Storage.Streams;
 
@@ -38,10 +37,6 @@ namespace GoodTimeStudio.MyPhone.OBEX.Headers
         {
         }
 
-        public ObexHeader(HeaderId headerId, long i) : this(headerId, i.ToBigEndianBytes())
-        {
-        }
-
         public ObexHeader(HeaderId headerId, string text, bool nullTerminated, Encoding stringEncoding)
             : this(headerId, text.ToBytes(stringEncoding, nullTerminated))
         {
@@ -66,6 +61,11 @@ namespace GoodTimeStudio.MyPhone.OBEX.Headers
         public string GetValueAsUnicodeString(bool stringIsNullTerminated)
         {
             return GetValue(new StringInterpreter(System.Text.Encoding.BigEndianUnicode, stringIsNullTerminated));
+        }
+
+        public int GetValueAsInt32()
+        {
+            return GetValue(new Int32Interpreter());
         }
 
         public AppParameterDictionary GetValueAsAppParameters()

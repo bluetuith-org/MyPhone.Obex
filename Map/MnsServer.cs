@@ -1,5 +1,4 @@
-﻿using System;
-using System.Xml;
+﻿using System.Xml;
 using Windows.Storage.Streams;
 
 namespace GoodTimeStudio.MyPhone.OBEX
@@ -29,7 +28,7 @@ namespace GoodTimeStudio.MyPhone.OBEX
                 XmlDocument doc = new XmlDocument();
                 doc.LoadXml(clientRequestPacket.GetBodyContentAsUtf8String(true));
                 string? handle = doc.SelectSingleNode("/MAP-event-report/event/@handle")?.Value;
-                
+
                 if (handle != null)
                 {
                     MessageReceived?.Invoke(this, new MessageReceivedEventArgs(handle));

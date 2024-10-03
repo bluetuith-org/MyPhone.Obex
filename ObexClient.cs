@@ -1,7 +1,6 @@
 ﻿using GoodTimeStudio.MyPhone.OBEX.Headers;
 using System;
 using System.IO;
-using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading.Tasks;
 using Windows.Storage.Streams;
 

@@ -12,6 +12,15 @@ namespace GoodTimeStudio.MyPhone.OBEX.Streams
         }
     }
 
+    public class Int32Interpreter : IBufferContentInterpreter<int>
+    {
+        public int GetValue(ReadOnlySpan<byte> buffer)
+        {
+
+            return BinaryPrimitives.ReadInt32BigEndian(buffer);
+        }
+    }
+
     public class StringInterpreter : IBufferContentInterpreter<string>
     {
         public Encoding StringEncoding { get; }

@@ -128,7 +128,7 @@
         Put = 0x02,
         Get = 0x03,
         Action = 0x06,
-        
+
 
         //OBEX Response Code
         Continue = 0x10,
@@ -171,7 +171,7 @@
         ServiceUnavailable = 0x53,
         GatewayTimeout = 0x54,
         VersionNotSupported = 0x55,
-        
+
         DatabaseFull = 0x60,
         DatabaseLocked = 0x61,
     }

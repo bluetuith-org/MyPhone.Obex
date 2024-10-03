@@ -15,7 +15,7 @@ namespace GoodTimeStudio.MyPhone.OBEX.Headers
 
         public byte[] Buffer { get; }
 
-        public AppParameter(byte tagId, byte[] buf) 
+        public AppParameter(byte tagId, byte[] buf)
         {
             if (buf.Length + 2 * sizeof(byte) > byte.MaxValue)
             {

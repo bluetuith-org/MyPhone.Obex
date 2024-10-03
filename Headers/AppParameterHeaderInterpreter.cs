@@ -1,10 +1,6 @@
 ﻿using GoodTimeStudio.MyPhone.OBEX.Streams;
 using System;
 using System.Buffers.Binary;
-using System.Collections.Generic;
-using System.IO;
-using System.Text;
-using Windows.Storage.Streams;
 
 namespace GoodTimeStudio.MyPhone.OBEX.Headers
 {

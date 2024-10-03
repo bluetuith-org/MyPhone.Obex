@@ -13,7 +13,7 @@ namespace GoodTimeStudio.MyPhone.OBEX.Map
         /// <remarks>
         /// Not null after connected.
         /// </remarks>
-        private ObexHeader? _connectionIdHeader; 
+        private ObexHeader? _connectionIdHeader;
 
         public MasClient(IInputStream inputStream, IOutputStream outputStream) : base(inputStream, outputStream)
         {

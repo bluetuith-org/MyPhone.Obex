@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace GoodTimeStudio.MyPhone.OBEX
 {
@@ -54,7 +52,7 @@ namespace GoodTimeStudio.MyPhone.OBEX
                     }
                     break;
             }
-        }   
+        }
 
         /// <summary>
         /// Construct a new ObexOpcode instance from byte
