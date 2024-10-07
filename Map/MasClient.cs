@@ -41,7 +41,7 @@ namespace GoodTimeStudio.MyPhone.OBEX.Map
         /// <remarks>If you try to get the listing size, please call <see cref="GetMessageListingSizeAsync"/> instead.</remarks>
         /// <returns>message handle list</returns>
         /// TODO: return Messages-Listing objects
-        public async Task<List<string>> GetMessagesListingAsync(ushort listStartOffset, ushort maxListCount, string folderName = "telecom")
+        public async Task<List<MessageListing>> GetMessagesListingAsync(ushort listStartOffset, ushort maxListCount, string folderName = "telecom")
         {
             ObexPacket packet = new ObexPacket(
                 new ObexOpcode(ObexOperation.Get, true),
@@ -54,22 +54,9 @@ namespace GoodTimeStudio.MyPhone.OBEX.Map
                 );
 
             ObexPacket resp = await RunObexRequestAsync(packet);
-
-            XmlDocument xml = new XmlDocument();
             string listingObj = resp.GetBodyContentAsUtf8String(false);
-            //string listingObj = System.Text.Encoding.UTF8.GetString(resp.BodyBuffer.ToArray());
-            xml.LoadXml(listingObj);
-            XmlNodeList list = xml.SelectNodes("/MAP-msg-listing/msg/@handle");
-            List<string> ret = new List<string>();
-            foreach (XmlNode n in list)
-            {
-                if (n.Value != null)
-                {
-                    ret.Add(n.Value);
-                }
-            }
 
-            return ret;
+            return MessageListing.Parse(listingObj);
         }
 
         public async Task<ushort> GetMessageListingSizeAsync(string folderName = "telecom")
@@ -246,9 +233,9 @@ namespace GoodTimeStudio.MyPhone.OBEX.Map
             return ret;
         }
 
-        public async Task<List<string>> GetAllMessagesAsync(string folderName = "telecom")
+        public async Task<List<MessageListing>> GetAllMessagesAsync(string folderName = "telecom")
         {
-            List<string> ret = new();
+            List<MessageListing> ret = new();
             bool lastPage = false;
             ushort offset = 0;
             const int default_size = 1024;
@@ -305,7 +292,7 @@ namespace GoodTimeStudio.MyPhone.OBEX.Map
                     SmsFolder smsFolder = new SmsFolder(subFolder, count, current);
                     if (getMessageHandles)
                     {
-                        foreach (string handle in await GetAllMessagesAsync(subFolder))
+                        foreach (MessageListing handle in await GetAllMessagesAsync(subFolder))
                         {
                             smsFolder.MessageHandles.Add(handle);
                         }
