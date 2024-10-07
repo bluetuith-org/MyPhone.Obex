@@ -17,12 +17,12 @@ namespace GoodTimeStudio.MyPhone.OBEX
 
         protected CancellationTokenSource _cts;
 
-        public ObexServer(IInputStream inputStream, IOutputStream outputStream, ObexServiceUuid serviceUuid)
+        public ObexServer(IInputStream inputStream, IOutputStream outputStream, ObexServiceUuid serviceUuid, CancellationTokenSource token)
         {
             _reader = new DataReader(inputStream);
             _writer = new DataWriter(outputStream);
             _serviceUuid = serviceUuid;
-            _cts = new CancellationTokenSource();
+            _cts = token;
         }
 
         public virtual async Task Run()

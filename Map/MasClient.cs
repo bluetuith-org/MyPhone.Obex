@@ -2,8 +2,10 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
+using Windows.Networking.Sockets;
 using Windows.Storage.Streams;
 
 namespace GoodTimeStudio.MyPhone.OBEX.Map
@@ -15,7 +17,7 @@ namespace GoodTimeStudio.MyPhone.OBEX.Map
         /// </remarks>
         private ObexHeader? _connectionIdHeader;
 
-        public MasClient(IInputStream inputStream, IOutputStream outputStream) : base(inputStream, outputStream)
+        public MasClient(StreamSocket socket, CancellationTokenSource token) : base(socket.InputStream, socket.OutputStream, token)
         {
         }
 

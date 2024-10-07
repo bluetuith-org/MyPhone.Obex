@@ -3,7 +3,9 @@ using MixERP.Net.VCards;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
+using Windows.Networking.Sockets;
 using Windows.Storage.Streams;
 
 namespace GoodTimeStudio.MyPhone.OBEX.Pbap
@@ -22,7 +24,7 @@ namespace GoodTimeStudio.MyPhone.OBEX.Pbap
         /// </remarks>
         private ObexHeader? _connectionIdHeader;
 
-        public PbapClient(IInputStream inputStream, IOutputStream outputStream, PbapSupportedFeatures supportedFeatures, Version profileVersion) : base(inputStream, outputStream)
+        public PbapClient(IInputStream inputStream, IOutputStream outputStream, PbapSupportedFeatures supportedFeatures, Version profileVersion, CancellationTokenSource token) : base(inputStream, outputStream, token)
         {
             SupportedFeatures = supportedFeatures;
             ProfileVersion = profileVersion;

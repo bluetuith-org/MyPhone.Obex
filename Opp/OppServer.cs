@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using Windows.Networking.Sockets;
 
@@ -23,8 +24,9 @@ namespace GoodTimeStudio.MyPhone.OBEX.Opp
 
         public OppServer(
             StreamSocket socket,
-            string _sdir
-          ) : base(socket.InputStream, socket.OutputStream, ObexServiceUuid.ObjectPush)
+            string _sdir,
+            CancellationTokenSource token
+          ) : base(socket.InputStream, socket.OutputStream, ObexServiceUuid.ObjectPush, token)
         {
             _socket = socket;
             _saveDirectory = _sdir;

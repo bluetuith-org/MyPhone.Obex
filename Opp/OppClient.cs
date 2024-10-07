@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Windows.Networking.Sockets;
+using Windows.Storage.Streams;
 
 namespace GoodTimeStudio.MyPhone.OBEX.Opp
 {
@@ -19,17 +20,14 @@ namespace GoodTimeStudio.MyPhone.OBEX.Opp
         private ObexHeader? _connectionIdHeader;
 
         private bool IsConnectionClosed = false;
-        private StreamSocket _socket;
-        private CancellationTokenSource _cancellationTokenSource = new();
 
         private ushort _clientPacketSize = 256;
 
         public record TransferEventData(string FileName, long FileSize, long BytesTransferred, bool TransferDone);
         public EventHandler<TransferEventData>? TransferEventHandler;
 
-        public OppClient(StreamSocket socket) : base(socket.InputStream, socket.OutputStream)
+        public OppClient(IInputStream inputStream, IOutputStream outputStream, CancellationTokenSource token) : base(inputStream, outputStream, token)
         {
-            _socket = socket;
         }
 
         protected override void OnConnected(ObexPacket connectionResponse)
@@ -42,27 +40,10 @@ namespace GoodTimeStudio.MyPhone.OBEX.Opp
             );
         }
 
-        public async Task SendFiles(params string[] files)
+        public async Task<bool> SendFile(string fileName)
         {
-            foreach (var file in files)
-            {
-                _cancellationTokenSource.Token.ThrowIfCancellationRequested();
+            _cancellationTokenSource.Token.ThrowIfCancellationRequested();
 
-                if (IsConnectionClosed)
-                    throw new ObexException("The socket has been closed");
-
-                if (!await SendFile(file))
-                    break;
-            }
-        }
-
-        public void StopSendingFiles()
-        {
-            _cancellationTokenSource.Cancel();
-        }
-
-        private async Task<bool> SendFile(string fileName)
-        {
             FileInfo file = new FileInfo(fileName);
 
             using (FileStream fileStream = new FileStream(fileName, FileMode.Open, FileAccess.Read, FileShare.Read, _clientPacketSize, true))
@@ -87,13 +68,9 @@ namespace GoodTimeStudio.MyPhone.OBEX.Opp
 
                         if (_cancellationTokenSource.IsCancellationRequested)
                         {
-                            request = new ObexPacket(new ObexOpcode(ObexOperation.Abort, true));
-                            _writer.WriteBuffer(request.ToBuffer());
-                            await _writer.StoreAsync();
+                            await AbortAsync();
 
-                            _socket.Dispose();
                             IsConnectionClosed = true;
-
                             SendObexTransferEvent(new TransferEventData(
                                 filename, file.Length, file.Length - numBytes, true
                             ));

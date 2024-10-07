@@ -5,6 +5,7 @@ using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using Windows.Devices.Bluetooth;
 using Windows.Networking.Sockets;
 
@@ -18,7 +19,7 @@ namespace GoodTimeStudio.MyPhone.OBEX.Pbap
 
         public Version? ProfileVersion { get; private set; }
 
-        public BluetoothPbapClientSession(BluetoothDevice bluetoothDevice) : base(bluetoothDevice, PHONE_BOOK_ACCESS_ID, ObexServiceUuid.PhonebookAccess)
+        public BluetoothPbapClientSession(BluetoothDevice bluetoothDevice, CancellationTokenSource token) : base(bluetoothDevice, PHONE_BOOK_ACCESS_ID, ObexServiceUuid.PhonebookAccess, token)
         {
         }
 
@@ -55,10 +56,10 @@ namespace GoodTimeStudio.MyPhone.OBEX.Pbap
             return true;
         }
 
-        public override PbapClient CreateObexClient(StreamSocket socket)
+        public override PbapClient CreateObexClient(StreamSocket socket, CancellationTokenSource token)
         {
             Debug.Assert(ProfileVersion != null);
-            return new PbapClient(socket.InputStream, socket.OutputStream, SupportedFeatures, ProfileVersion);
+            return new PbapClient(socket.InputStream, socket.OutputStream, SupportedFeatures, ProfileVersion, token);
         }
     }
 }

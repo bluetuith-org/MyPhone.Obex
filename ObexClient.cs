@@ -1,6 +1,7 @@
 ﻿using GoodTimeStudio.MyPhone.OBEX.Headers;
 using System;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using Windows.Storage.Streams;
 
@@ -11,12 +12,15 @@ namespace GoodTimeStudio.MyPhone.OBEX
         protected DataReader _reader;
         protected DataWriter _writer;
 
+        protected CancellationTokenSource _cancellationTokenSource;
+
         public bool Conntected { get; private set; } = false;
 
-        public ObexClient(IInputStream inputStream, IOutputStream outputStream)
+        public ObexClient(IInputStream inputStream, IOutputStream outputStream, CancellationTokenSource token)
         {
             _reader = new DataReader(inputStream);
             _writer = new DataWriter(outputStream);
+            _cancellationTokenSource = token;
         }
 
         /// <summary>
@@ -51,14 +55,22 @@ namespace GoodTimeStudio.MyPhone.OBEX
 
         protected virtual void OnConnected(ObexPacket connectionResponse) { }
 
-        public Task DisconnectAsync()
+        public async Task DisconnectAsync()
         {
             if (!Conntected)
             {
                 throw new InvalidOperationException("ObexClient is not connected to any ObexServer");
             }
+        }
 
-            throw new NotImplementedException();
+        protected async Task AbortAsync()
+        {
+            if (!_cancellationTokenSource.IsCancellationRequested)
+                await _cancellationTokenSource.CancelAsync();
+
+            var request = new ObexPacket(new ObexOpcode(ObexOperation.Abort, true));
+            _writer?.WriteBuffer(request.ToBuffer());
+            await _writer?.StoreAsync();
         }
 
         /// <summary>
@@ -75,6 +87,8 @@ namespace GoodTimeStudio.MyPhone.OBEX
                 throw new InvalidOperationException("ObexClient is not connected to any ObexServer");
             }
 
+            _cancellationTokenSource.Token.ThrowIfCancellationRequested();
+
             ObexOperation? requestOperation = req.Opcode.ObexOperation;
             if (requestOperation == null)
             {
@@ -87,6 +101,12 @@ namespace GoodTimeStudio.MyPhone.OBEX
             {
                 do
                 {
+                    if (_cancellationTokenSource.IsCancellationRequested)
+                    {
+                        await AbortAsync();
+                        return null;
+                    }
+
                     var buf = req.ToBuffer();
                     _writer.WriteBuffer(buf);
                     await _writer.StoreAsync();

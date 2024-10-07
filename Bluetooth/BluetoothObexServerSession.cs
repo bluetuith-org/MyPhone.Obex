@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using Windows.Devices.Bluetooth.Rfcomm;
 using Windows.Networking.Sockets;
@@ -63,8 +64,9 @@ namespace GoodTimeStudio.MyPhone.OBEX.Bluetooth
         private RfcommServiceProvider? _serviceProvider;
         private Dictionary<BluetoothClientInformation, T> _connections;
         private uint _maxConnections;
+        private CancellationTokenSource _cts;
 
-        public BluetoothObexServerSession(Guid serviceUuid) : this(serviceUuid, 0)
+        public BluetoothObexServerSession(Guid serviceUuid, CancellationTokenSource token) : this(serviceUuid, 0, token)
         { }
 
         /// <summary>
@@ -72,11 +74,12 @@ namespace GoodTimeStudio.MyPhone.OBEX.Bluetooth
         /// </summary>
         /// <param name="serviceUuid">The bluetooth service UUID</param>
         /// <param name="maxConnection">The maximum number of connections allowed. 0 means no limits.</param>
-        public BluetoothObexServerSession(Guid serviceUuid, uint maxConnections)
+        public BluetoothObexServerSession(Guid serviceUuid, uint maxConnections, CancellationTokenSource token)
         {
             ServiceUuid = serviceUuid;
             _connections = new Dictionary<BluetoothClientInformation, T>();
             _maxConnections = maxConnections;
+            _cts = token;
         }
 
         public async Task StartServerAsync()
@@ -89,6 +92,8 @@ namespace GoodTimeStudio.MyPhone.OBEX.Bluetooth
             StreamSocketListener socketListener;
             try
             {
+                _cts.Token.ThrowIfCancellationRequested();
+
                 socketListener = new StreamSocketListener();
                 socketListener.ConnectionReceived += SocketListener_ConnectionReceived;
 
@@ -121,7 +126,7 @@ namespace GoodTimeStudio.MyPhone.OBEX.Bluetooth
             {
                 return;
             }
-            T obexServer = CreateObexServer(args.Socket);
+            T obexServer = CreateObexServer(args.Socket, _cts);
             BluetoothClientInformation clientInformation = new(args.Socket.Information.RemoteAddress, args.Socket.Information.RemoteServiceName);
             _connections[clientInformation] = obexServer;
             ClientAccepted?.Invoke(this, new BluetoothObexServerSessionClientAcceptedEventArgs<T>(clientInformation, obexServer));
@@ -143,10 +148,11 @@ namespace GoodTimeStudio.MyPhone.OBEX.Bluetooth
             }
         }
 
-        protected abstract T CreateObexServer(StreamSocket clientSocket);
+        protected abstract T CreateObexServer(StreamSocket clientSocket, CancellationTokenSource token);
 
         public void Dispose()
         {
+            _cts.Cancel();
             _serviceProvider?.StopAdvertising();
             foreach (T obexServer in _connections.Values)
             {

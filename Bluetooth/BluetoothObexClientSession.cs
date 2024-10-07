@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
+using System.Threading;
 using System.Threading.Tasks;
 using Windows.Devices.Bluetooth;
 using Windows.Devices.Bluetooth.Rfcomm;
@@ -36,11 +37,14 @@ namespace GoodTimeStudio.MyPhone.OBEX.Bluetooth
         private RfcommDeviceService? _service;
         private StreamSocket? _socket;
 
-        public BluetoothObexClientSession(BluetoothDevice bluetoothDevice, Guid rfcommServiceUuid, ObexServiceUuid targetObexService)
+        private CancellationTokenSource _cts;
+
+        public BluetoothObexClientSession(BluetoothDevice bluetoothDevice, Guid rfcommServiceUuid, ObexServiceUuid targetObexService, CancellationTokenSource token)
         {
             ServiceUuid = rfcommServiceUuid;
             TargetObexService = targetObexService;
             Device = bluetoothDevice;
+            _cts = token;
         }
 
         /// <summary>
@@ -49,6 +53,7 @@ namespace GoodTimeStudio.MyPhone.OBEX.Bluetooth
         /// <exception cref="BluetoothObexSessionException">Failed to establish a bluetooth Rfcomm socket channel</exception>
         public async Task ConnectAsync()
         {
+            _cts.Token.ThrowIfCancellationRequested();
             RfcommDeviceServicesResult result = await Device.GetRfcommServicesAsync(BluetoothCacheMode.Uncached);
 
             if (result.Error != BluetoothError.Success)
@@ -85,6 +90,7 @@ namespace GoodTimeStudio.MyPhone.OBEX.Bluetooth
                 throw new BluetoothServiceNotSupportedException($"The remote bluetooth device provided the required servic: {ServiceUuid}, but it does not meet the feature requirements.");
             }
 
+            _cts.Token.ThrowIfCancellationRequested();
             StreamSocket socket = new StreamSocket();
             try
             {
@@ -108,8 +114,8 @@ namespace GoodTimeStudio.MyPhone.OBEX.Bluetooth
                 }
             }
 
-
-            ObexClient = CreateObexClient(socket);
+            _cts.Token.ThrowIfCancellationRequested();
+            ObexClient = CreateObexClient(socket, _cts);
             try
             {
                 await ObexClient.ConnectAsync(TargetObexService);
@@ -135,7 +141,7 @@ namespace GoodTimeStudio.MyPhone.OBEX.Bluetooth
         /// </summary>
         /// <param name="socket">Stream socket</param>
         /// <returns>ObexClient</returns>
-        public abstract T CreateObexClient(StreamSocket socket);
+        public abstract T CreateObexClient(StreamSocket socket, CancellationTokenSource token);
 
         /// <summary>
         /// Checking agasint SDP records of the RFComm service to test whether it provides necessary features.
@@ -153,6 +159,7 @@ namespace GoodTimeStudio.MyPhone.OBEX.Bluetooth
 
         public virtual void Dispose()
         {
+            _cts.Cancel();
             if (_socket != null)
             {
                 _socket.Dispose();

@@ -4,6 +4,7 @@ using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using Windows.Devices.Bluetooth;
 using Windows.Networking.Sockets;
 
@@ -17,7 +18,7 @@ namespace GoodTimeStudio.MyPhone.OBEX.Map
 
         public MapSupportedFeatures SupportedFeatures { get; private set; }
 
-        public BluetoothMasClientSession(BluetoothDevice bluetoothDevice) : base(bluetoothDevice, MAP_Id, ObexServiceUuid.MessageAccess)
+        public BluetoothMasClientSession(BluetoothDevice bluetoothDevice, CancellationTokenSource token) : base(bluetoothDevice, MAP_Id, ObexServiceUuid.MessageAccess, token)
         {
         }
 
@@ -54,9 +55,9 @@ namespace GoodTimeStudio.MyPhone.OBEX.Map
             return true;
         }
 
-        public override MasClient CreateObexClient(StreamSocket socket)
+        public override MasClient CreateObexClient(StreamSocket socket, CancellationTokenSource token)
         {
-            return new MasClient(socket.InputStream, socket.OutputStream);
+            return new MasClient(socket, token);
         }
     }
 }
