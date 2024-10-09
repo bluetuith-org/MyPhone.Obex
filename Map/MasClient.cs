@@ -97,16 +97,7 @@ namespace GoodTimeStudio.MyPhone.OBEX.Map
             BMessage bMsg;
             try
             {
-                BMessageNode bMsgNode = BMessageNode.Parse(bMsgStr);
-                bMsg = new BMessage(
-                    status: bMsgNode.Attributes["STATUS"] == "UNREAD" ? BMessageStatus.UNREAD : BMessageStatus.READ,
-                    type: bMsgNode.Attributes["TYPE"],
-                    folder: bMsgNode.Attributes["FOLDER"],
-                    charset: bMsgNode.ChildrenNode["BENV"].ChildrenNode["BBODY"].Attributes["CHARSET"],
-                    length: int.Parse(bMsgNode.ChildrenNode["BENV"].ChildrenNode["BBODY"].Attributes["LENGTH"]),
-                    body: bMsgNode.ChildrenNode["BENV"].ChildrenNode["BBODY"].ChildrenNode["MSG"].Value!,
-                    sender: MixERP.Net.VCards.Deserializer.GetVCard(bMsgNode.ChildrenNode["VCARD"].ToString())
-                    );
+                bMsg = BMessage.Parse(bMsgStr);
             }
             catch (BMessageException ex)
             {
