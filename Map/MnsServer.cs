@@ -1,4 +1,7 @@
-﻿using System.Threading;
+﻿using System;
+using System.Collections.Generic;
+using System.Text;
+using System.Threading;
 using System.Xml;
 using Windows.Storage.Streams;
 
@@ -6,11 +9,55 @@ namespace GoodTimeStudio.MyPhone.OBEX
 {
     public class MessageReceivedEventArgs
     {
-        public string MessageHandle { get; set; }
+        public string EventType { get; set; } = "";
+        public string MessageType { get; set; } = "";
+        public string MessageHandle { get; set; } = "";
+        public string Folder { get; set; } = "";
 
-        public MessageReceivedEventArgs(string messageHandle)
+        public MessageReceivedEventArgs(string eventType, string messageType, string folder, string messageHandle)
         {
+            EventType = eventType;
+            MessageType = messageType;
+            Folder = folder;
             MessageHandle = messageHandle;
+        }
+
+        public MessageReceivedEventArgs() { }
+
+        public static MessageReceivedEventArgs Parse(string xmlDoc)
+        {
+            XmlDocument doc = new XmlDocument();
+            doc.LoadXml(xmlDoc);
+
+            var messageEventArgs = new MessageReceivedEventArgs();
+
+            foreach (var item in new List<string>() { "handle", "type", "folder", "msg_type" })
+            {
+                var singleNode = doc.SelectSingleNode("/MAP-event-report/event/@" + item);
+                if (singleNode == null || singleNode.Value == null)
+                    if (item == "handle")
+                        return null;
+                    else
+                        continue;
+
+                switch (item)
+                {
+                    case "handle":
+                        messageEventArgs.MessageHandle = singleNode.Value;
+                        break;
+                    case "type":
+                        messageEventArgs.EventType = singleNode.Value;
+                        break;
+                    case "folder":
+                        messageEventArgs.Folder = singleNode.Value;
+                        break;
+                    case "msg_type":
+                        messageEventArgs.MessageType = singleNode.Value;
+                        break;
+                }
+            }
+
+            return messageEventArgs;
         }
     }
 
@@ -28,19 +75,20 @@ namespace GoodTimeStudio.MyPhone.OBEX
 
             if (clientRequestPacket.Opcode.ObexOperation == ObexOperation.Put)
             {
+                if (!clientRequestPacket.Headers.TryGetValue(HeaderId.Body, out var body))
+                    return null;
+                if (body.Buffer.Length == 0)
+                    return null;
 
-                XmlDocument doc = new XmlDocument();
-                doc.LoadXml(clientRequestPacket.GetBodyContentAsUtf8String(true));
-                string? handle = doc.SelectSingleNode("/MAP-event-report/event/@handle")?.Value;
+                var eventXml = Encoding.UTF8.GetString(body.Buffer);
+                var messageEventArgs = MessageReceivedEventArgs.Parse(eventXml);
+                if (messageEventArgs == null)
+                    return null;
 
-                if (handle != null)
-                {
-                    MessageReceived?.Invoke(this, new MessageReceivedEventArgs(handle));
-                    return new ObexPacket(new ObexOpcode(ObexOperation.Success, true));
-                }
+                MessageReceived?.Invoke(this, messageEventArgs);
             }
 
-            return null;
+            return clientRequestPacket;
         }
     }
 }
