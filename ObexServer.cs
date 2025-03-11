@@ -77,6 +77,11 @@ namespace GoodTimeStudio.MyPhone.OBEX
             _cts.Cancel();
         }
 
+        public virtual void CancelTransfer()
+        {
+
+        }
+
         /// <summary>
         /// Handle client request.
         /// </summary>

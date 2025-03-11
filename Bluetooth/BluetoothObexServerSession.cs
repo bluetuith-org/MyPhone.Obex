@@ -142,13 +142,21 @@ namespace GoodTimeStudio.MyPhone.OBEX.Bluetooth
             catch (ObexException ex)
             {
                 obexSerber.StopServer();
-                _connections.Remove(clientInformation);
                 ClientDisconnected?.Invoke(this, new BluetoothObexServerSessionClientDisconnectedEventArgs<T>(
                     clientInformation, obexSerber, ex));
+            }
+            finally
+            {
+                _connections.Remove(clientInformation);
             }
         }
 
         protected abstract T CreateObexServer(StreamSocket clientSocket, CancellationTokenSource token);
+
+        public virtual void CancelTransfer()
+        {
+
+        }
 
         public void Dispose()
         {
