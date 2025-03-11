@@ -6,7 +6,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
 using Windows.Networking.Sockets;
-using Windows.Storage.Streams;
 
 namespace GoodTimeStudio.MyPhone.OBEX.Map
 {
