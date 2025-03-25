@@ -7,27 +7,38 @@ using Windows.Networking.Sockets;
 
 namespace GoodTimeStudio.MyPhone.OBEX.Bluetooth
 {
-    public class BluetoothObexServerSessionClientEventArgs<T> where T : ObexServer
+    public class BluetoothObexServerSessionClientEventArgs<T>
+        where T : ObexServer
     {
         public BluetoothClientInformation ClientInfo { get; set; }
 
         public T ObexServer { get; set; }
 
-        public BluetoothObexServerSessionClientEventArgs(BluetoothClientInformation clientInformation, T obexServer)
+        public BluetoothObexServerSessionClientEventArgs(
+            BluetoothClientInformation clientInformation,
+            T obexServer
+        )
         {
-            ClientInfo = clientInformation ?? throw new ArgumentNullException(nameof(clientInformation));
+            ClientInfo =
+                clientInformation ?? throw new ArgumentNullException(nameof(clientInformation));
             ObexServer = obexServer ?? throw new ArgumentNullException(nameof(obexServer));
         }
     }
 
-    public class BluetoothObexServerSessionClientAcceptedEventArgs<T> : BluetoothObexServerSessionClientEventArgs<T> where T : ObexServer
+    public class BluetoothObexServerSessionClientAcceptedEventArgs<T>
+        : BluetoothObexServerSessionClientEventArgs<T>
+        where T : ObexServer
     {
-        public BluetoothObexServerSessionClientAcceptedEventArgs(BluetoothClientInformation clientInformation, T obexServer) : base(clientInformation, obexServer)
-        {
-        }
+        public BluetoothObexServerSessionClientAcceptedEventArgs(
+            BluetoothClientInformation clientInformation,
+            T obexServer
+        )
+            : base(clientInformation, obexServer) { }
     }
 
-    public class BluetoothObexServerSessionClientDisconnectedEventArgs<T> : BluetoothObexServerSessionClientEventArgs<T> where T : ObexServer
+    public class BluetoothObexServerSessionClientDisconnectedEventArgs<T>
+        : BluetoothObexServerSessionClientEventArgs<T>
+        where T : ObexServer
     {
         /// <summary>
         /// The <see cref="ObexException"/> that causes the client disconnected.
@@ -37,20 +48,27 @@ namespace GoodTimeStudio.MyPhone.OBEX.Bluetooth
         public BluetoothObexServerSessionClientDisconnectedEventArgs(
             BluetoothClientInformation clientInformation,
             T obexServer,
-            ObexException obexException) : base(clientInformation, obexServer)
+            ObexException obexException
+        )
+            : base(clientInformation, obexServer)
         {
             ObexServerException = obexException;
         }
     }
 
-    public abstract class BluetoothObexServerSession<T> : IDisposable where T : ObexServer
+    public abstract class BluetoothObexServerSession<T> : IDisposable
+        where T : ObexServer
     {
         public delegate void BluetoothObexServerSessionClientAcceptedEventHandler(
-            BluetoothObexServerSession<T> sender, BluetoothObexServerSessionClientAcceptedEventArgs<T> e);
+            BluetoothObexServerSession<T> sender,
+            BluetoothObexServerSessionClientAcceptedEventArgs<T> e
+        );
         public event BluetoothObexServerSessionClientAcceptedEventHandler? ClientAccepted;
 
         public delegate void BluetoothObexServerSessionClientDisconnectedEventHandler(
-            BluetoothObexServerSession<T> sender, BluetoothObexServerSessionClientDisconnectedEventArgs<T> args);
+            BluetoothObexServerSession<T> sender,
+            BluetoothObexServerSessionClientDisconnectedEventArgs<T> args
+        );
         public event BluetoothObexServerSessionClientDisconnectedEventHandler? ClientDisconnected;
 
         public Guid ServiceUuid { get; set; }
@@ -66,15 +84,19 @@ namespace GoodTimeStudio.MyPhone.OBEX.Bluetooth
         private uint _maxConnections;
         private CancellationTokenSource _cts;
 
-        public BluetoothObexServerSession(Guid serviceUuid, CancellationTokenSource token) : this(serviceUuid, 0, token)
-        { }
+        public BluetoothObexServerSession(Guid serviceUuid, CancellationTokenSource token)
+            : this(serviceUuid, 0, token) { }
 
         /// <summary>
         /// Initialize BluetoothObexServerSession
         /// </summary>
         /// <param name="serviceUuid">The bluetooth service UUID</param>
         /// <param name="maxConnection">The maximum number of connections allowed. 0 means no limits.</param>
-        public BluetoothObexServerSession(Guid serviceUuid, uint maxConnections, CancellationTokenSource token)
+        public BluetoothObexServerSession(
+            Guid serviceUuid,
+            uint maxConnections,
+            CancellationTokenSource token
+        )
         {
             ServiceUuid = serviceUuid;
             _connections = new Dictionary<BluetoothClientInformation, T>();
@@ -86,7 +108,9 @@ namespace GoodTimeStudio.MyPhone.OBEX.Bluetooth
         {
             if (ServerStarted)
             {
-                throw new InvalidOperationException("The BluetoothObexServerSession is already started.");
+                throw new InvalidOperationException(
+                    "The BluetoothObexServerSession is already started."
+                );
             }
 
             StreamSocketListener socketListener;
@@ -97,9 +121,13 @@ namespace GoodTimeStudio.MyPhone.OBEX.Bluetooth
                 socketListener = new StreamSocketListener();
                 socketListener.ConnectionReceived += SocketListener_ConnectionReceived;
 
-                _serviceProvider = await RfcommServiceProvider.CreateAsync(RfcommServiceId.FromUuid(ServiceUuid));
-                await socketListener.BindServiceNameAsync(_serviceProvider.ServiceId.AsString(),
-                    SocketProtectionLevel.BluetoothEncryptionWithAuthentication);
+                _serviceProvider = await RfcommServiceProvider.CreateAsync(
+                    RfcommServiceId.FromUuid(ServiceUuid)
+                );
+                await socketListener.BindServiceNameAsync(
+                    _serviceProvider.ServiceId.AsString(),
+                    SocketProtectionLevel.BluetoothEncryptionWithAuthentication
+                );
                 _serviceProvider.StartAdvertising(socketListener);
             }
             catch (Exception ex)
@@ -109,7 +137,8 @@ namespace GoodTimeStudio.MyPhone.OBEX.Bluetooth
                 {
                     throw new BluetoothObexSessionException(
                         "Unable to bind and start the OBEX server on Bluetooth socket",
-                        socketError: socketErrorStatus);
+                        socketError: socketErrorStatus
+                    );
                 }
                 else
                 {
@@ -120,16 +149,28 @@ namespace GoodTimeStudio.MyPhone.OBEX.Bluetooth
             _socketListener = socketListener;
         }
 
-        private void SocketListener_ConnectionReceived(StreamSocketListener sender, StreamSocketListenerConnectionReceivedEventArgs args)
+        private void SocketListener_ConnectionReceived(
+            StreamSocketListener sender,
+            StreamSocketListenerConnectionReceivedEventArgs args
+        )
         {
             if (_maxConnections > 0 && _connections.Count >= _maxConnections)
             {
                 return;
             }
             T obexServer = CreateObexServer(args.Socket, _cts);
-            BluetoothClientInformation clientInformation = new(args.Socket.Information.RemoteAddress, args.Socket.Information.RemoteServiceName);
+            BluetoothClientInformation clientInformation = new(
+                args.Socket.Information.RemoteAddress,
+                args.Socket.Information.RemoteServiceName
+            );
             _connections[clientInformation] = obexServer;
-            ClientAccepted?.Invoke(this, new BluetoothObexServerSessionClientAcceptedEventArgs<T>(clientInformation, obexServer));
+            ClientAccepted?.Invoke(
+                this,
+                new BluetoothObexServerSessionClientAcceptedEventArgs<T>(
+                    clientInformation,
+                    obexServer
+                )
+            );
             Task.Run(async () => await RunObexServer(obexServer, clientInformation));
         }
 
@@ -142,8 +183,14 @@ namespace GoodTimeStudio.MyPhone.OBEX.Bluetooth
             catch (ObexException ex)
             {
                 obexSerber.StopServer();
-                ClientDisconnected?.Invoke(this, new BluetoothObexServerSessionClientDisconnectedEventArgs<T>(
-                    clientInformation, obexSerber, ex));
+                ClientDisconnected?.Invoke(
+                    this,
+                    new BluetoothObexServerSessionClientDisconnectedEventArgs<T>(
+                        clientInformation,
+                        obexSerber,
+                        ex
+                    )
+                );
             }
             finally
             {
@@ -151,12 +198,12 @@ namespace GoodTimeStudio.MyPhone.OBEX.Bluetooth
             }
         }
 
-        protected abstract T CreateObexServer(StreamSocket clientSocket, CancellationTokenSource token);
+        protected abstract T CreateObexServer(
+            StreamSocket clientSocket,
+            CancellationTokenSource token
+        );
 
-        public virtual void CancelTransfer()
-        {
-
-        }
+        public virtual void CancelTransfer() { }
 
         public void Dispose()
         {

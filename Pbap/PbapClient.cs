@@ -1,10 +1,10 @@
-using GoodTimeStudio.MyPhone.OBEX.Headers;
-using MixERP.Net.VCards;
 using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using GoodTimeStudio.MyPhone.OBEX.Headers;
+using MixERP.Net.VCards;
 using Windows.Storage.Streams;
 
 namespace GoodTimeStudio.MyPhone.OBEX.Pbap
@@ -23,7 +23,14 @@ namespace GoodTimeStudio.MyPhone.OBEX.Pbap
         /// </remarks>
         private ObexHeader? _connectionIdHeader;
 
-        public PbapClient(IInputStream inputStream, IOutputStream outputStream, PbapSupportedFeatures supportedFeatures, Version profileVersion, CancellationTokenSource token) : base(inputStream, outputStream, token)
+        public PbapClient(
+            IInputStream inputStream,
+            IOutputStream outputStream,
+            PbapSupportedFeatures supportedFeatures,
+            Version profileVersion,
+            CancellationTokenSource token
+        )
+            : base(inputStream, outputStream, token)
         {
             SupportedFeatures = supportedFeatures;
             ProfileVersion = profileVersion;
@@ -38,20 +45,22 @@ namespace GoodTimeStudio.MyPhone.OBEX.Pbap
         /// Retrieves an phone book object from the object exchange server.
         /// </summary>
         /// <param name="phoneBookObjectPath">
-        /// Absolute path in the virtual folders architecture of the PSE, 
+        /// Absolute path in the virtual folders architecture of the PSE,
         /// appended with the name of the file representation of one of the Phone Book Objects.
         /// Example: telecom/pb.vcf or SIM1/telecom/pb.vcf for the main phone book objects
         /// </param>
         /// <returns>phone book object string</returns>
         public async Task<string> PullPhoneBookAsync(string phoneBookObjectPath)
         {
-            ObexPacket request = new ObexPacket(new ObexOpcode(ObexOperation.Get, true),
+            ObexPacket request = new ObexPacket(
+                new ObexOpcode(ObexOperation.Get, true),
                 _connectionIdHeader!,
                 new ObexHeader(HeaderId.Name, phoneBookObjectPath, true, Encoding.BigEndianUnicode),
                 new ObexHeader(HeaderId.Type, "x-bt/phonebook", true, Encoding.UTF8),
                 new AppParameterHeaderBuilder(
-                    new AppParameter((byte)PbapAppParamTagId.Format, (byte)1)).Build()
-                );
+                    new AppParameter((byte)PbapAppParamTagId.Format, (byte)1)
+                ).Build()
+            );
 
             ObexPacket response = await RunObexRequestAsync(request);
             return response.GetBodyContentAsUtf8String(true);
@@ -92,6 +101,5 @@ namespace GoodTimeStudio.MyPhone.OBEX.Pbap
             string str = await PullPhoneBookAsync("telecom/spd.vcf");
             return Deserializer.GetVCards(str);
         }
-
     }
 }

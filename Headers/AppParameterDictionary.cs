@@ -17,10 +17,7 @@ namespace GoodTimeStudio.MyPhone.OBEX.Headers
                     throw new ObexAppParameterNotFoundException(key);
                 }
             }
-            set
-            {
-                base[key] = value;
-            }
+            set { base[key] = value; }
         }
     }
 }

@@ -1,8 +1,8 @@
-﻿using GoodTimeStudio.MyPhone.OBEX.Extensions;
+﻿using System;
+using System.Text;
+using GoodTimeStudio.MyPhone.OBEX.Extensions;
 using GoodTimeStudio.MyPhone.OBEX.Streams;
 using GoodTimeStudio.MyPhone.OBEX.Utilities;
-using System;
-using System.Text;
 using Windows.Storage.Streams;
 
 namespace GoodTimeStudio.MyPhone.OBEX.Headers
@@ -11,13 +11,22 @@ namespace GoodTimeStudio.MyPhone.OBEX.Headers
     {
         public HeaderId HeaderId { get; set; }
 
-        public ushort BufferLength { get => (ushort)Buffer.Length; }
+        public ushort BufferLength
+        {
+            get => (ushort)Buffer.Length;
+        }
 
-        public ushort HeaderTotalLength { get => (ushort)(BufferLength + sizeof(HeaderId) + sizeof(ushort)); }
+        public ushort HeaderTotalLength
+        {
+            get => (ushort)(BufferLength + sizeof(HeaderId) + sizeof(ushort));
+        }
 
         public byte[] Buffer { get; set; }
 
-        public ObexHeaderEncoding Encoding { get => GetEncodingFromHeaderId(HeaderId); }
+        public ObexHeaderEncoding Encoding
+        {
+            get => GetEncodingFromHeaderId(HeaderId);
+        }
 
         public ObexHeader(HeaderId headerId, byte[] buffer)
         {
@@ -29,20 +38,22 @@ namespace GoodTimeStudio.MyPhone.OBEX.Headers
             Buffer = buffer;
         }
 
-        public ObexHeader(HeaderId headerId, byte b) : this(headerId, new byte[] { b })
-        {
-        }
+        public ObexHeader(HeaderId headerId, byte b)
+            : this(headerId, new byte[] { b }) { }
 
-        public ObexHeader(HeaderId headerId, int i) : this(headerId, i.ToBigEndianBytes())
-        {
-        }
+        public ObexHeader(HeaderId headerId, int i)
+            : this(headerId, i.ToBigEndianBytes()) { }
 
-        public ObexHeader(HeaderId headerId, string text, bool nullTerminated, Encoding stringEncoding)
-            : this(headerId, text.ToBytes(stringEncoding, nullTerminated))
-        {
-        }
+        public ObexHeader(
+            HeaderId headerId,
+            string text,
+            bool nullTerminated,
+            Encoding stringEncoding
+        )
+            : this(headerId, text.ToBytes(stringEncoding, nullTerminated)) { }
 
-        public R GetValue<I, R>() where I : IBufferContentInterpreter<R>, new()
+        public R GetValue<I, R>()
+            where I : IBufferContentInterpreter<R>, new()
         {
             I interpreter = new I();
             return GetValue(interpreter);
@@ -55,12 +66,16 @@ namespace GoodTimeStudio.MyPhone.OBEX.Headers
 
         public string GetValueAsUtf8String(bool stringIsNullTerminated)
         {
-            return GetValue(new StringInterpreter(System.Text.Encoding.UTF8, stringIsNullTerminated));
+            return GetValue(
+                new StringInterpreter(System.Text.Encoding.UTF8, stringIsNullTerminated)
+            );
         }
 
         public string GetValueAsUnicodeString(bool stringIsNullTerminated)
         {
-            return GetValue(new StringInterpreter(System.Text.Encoding.BigEndianUnicode, stringIsNullTerminated));
+            return GetValue(
+                new StringInterpreter(System.Text.Encoding.BigEndianUnicode, stringIsNullTerminated)
+            );
         }
 
         public int GetValueAsInt32()
@@ -124,16 +139,17 @@ namespace GoodTimeStudio.MyPhone.OBEX.Headers
 
         public override bool Equals(object? obj)
         {
-            return obj is ObexHeader header &&
-                   HeaderId == header.HeaderId &&
-                   ByteArrayEqualityComparer.Default.Equals(Buffer, header.Buffer);
+            return obj is ObexHeader header
+                && HeaderId == header.HeaderId
+                && ByteArrayEqualityComparer.Default.Equals(Buffer, header.Buffer);
         }
 
         public override int GetHashCode()
         {
             int hashCode = -310111661;
             hashCode = hashCode * -1521134295 + HeaderId.GetHashCode();
-            hashCode = hashCode * -1521134295 + ByteArrayEqualityComparer.Default.GetHashCode(Buffer);
+            hashCode =
+                hashCode * -1521134295 + ByteArrayEqualityComparer.Default.GetHashCode(Buffer);
             return hashCode;
         }
     }
@@ -143,7 +159,6 @@ namespace GoodTimeStudio.MyPhone.OBEX.Headers
         UnicodeString = 0,
         ByteSequence,
         OneByteQuantity,
-        FourByteQuantity
+        FourByteQuantity,
     }
-
 }

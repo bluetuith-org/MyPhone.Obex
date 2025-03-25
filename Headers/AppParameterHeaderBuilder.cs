@@ -6,7 +6,6 @@ namespace GoodTimeStudio.MyPhone.OBEX.Headers
 {
     public class AppParameterHeaderBuilder
     {
-
         public List<AppParameter> AppParameters { get; }
 
         public AppParameterHeaderBuilder(params AppParameter[] appParameters)

@@ -1,7 +1,7 @@
-﻿using GoodTimeStudio.MyPhone.OBEX.Headers;
-using System;
+﻿using System;
 using System.Text;
 using System.Threading.Tasks;
+using GoodTimeStudio.MyPhone.OBEX.Headers;
 using Windows.Storage.Streams;
 
 namespace GoodTimeStudio.MyPhone.OBEX.Map
@@ -20,19 +20,20 @@ namespace GoodTimeStudio.MyPhone.OBEX.Map
         /// <param name="mode">Indicates the direction of folder traversal</param>
         /// <param name="folderName">
         /// Name of the fodler.
-        /// 
+        ///
         /// If the <paramref name="mode"/> is <see cref="SetPathMode.BackToRoot"/>, the folderName must be empty.
-        /// 
-        /// If the <paramref name="mode"/> is <see cref="SetPathMode.EnterFolder"/>, 
+        ///
+        /// If the <paramref name="mode"/> is <see cref="SetPathMode.EnterFolder"/>,
         /// the folderName should be the child folder name and it must NOT be empty.
-        /// 
+        ///
         /// If the <paramref name="mode"/> is <see cref="SetPathMode.BackToParent"/>, the folderName is optional (either empty or peer folder name).
-        /// If the folderName is empty, go back to the parent folder. 
+        /// If the folderName is empty, go back to the parent folder.
         /// If the folderName is a peer folder name (child of the parent folder), go back to the parent folder first then enter the child folder.
         /// Equivalent to "cd ../folderName"
         /// </param>
-        /// 
-        public MapSetPathRequestPacket(SetPathMode mode, string folderName = "") : base(new ObexOpcode(ObexOperation.SetPath, true))
+        ///
+        public MapSetPathRequestPacket(SetPathMode mode, string folderName = "")
+            : base(new ObexOpcode(ObexOperation.SetPath, true))
         {
             SetPathMode = mode;
 
@@ -41,19 +42,30 @@ namespace GoodTimeStudio.MyPhone.OBEX.Map
                 case SetPathMode.BackToRoot:
                     if (folderName != "")
                     {
-                        throw new ArgumentException($"The folderName must be empty in this mode {mode}", nameof(folderName));
+                        throw new ArgumentException(
+                            $"The folderName must be empty in this mode {mode}",
+                            nameof(folderName)
+                        );
                     }
                     break;
                 case SetPathMode.EnterFolder:
                     if (string.IsNullOrEmpty(folderName))
                     {
-                        throw new ArgumentException($"The folderName must NOT be empty in this mode {mode}", nameof(folderName));
+                        throw new ArgumentException(
+                            $"The folderName must NOT be empty in this mode {mode}",
+                            nameof(folderName)
+                        );
                     }
                     break;
             }
 
             TargetFolderName = folderName;
-            Headers[HeaderId.Name] = new ObexHeader(HeaderId.Name, folderName, true, Encoding.BigEndianUnicode);
+            Headers[HeaderId.Name] = new ObexHeader(
+                HeaderId.Name,
+                folderName,
+                true,
+                Encoding.BigEndianUnicode
+            );
         }
 
         protected override void WriteExtraField(DataWriter writer)
@@ -71,7 +83,7 @@ namespace GoodTimeStudio.MyPhone.OBEX.Map
             writer.WriteByte(0); // Reserved Constants field
         }
 
-        protected async override Task<uint> ReadExtraField(DataReader reader)
+        protected override async Task<uint> ReadExtraField(DataReader reader)
         {
             await reader.LoadAsync(2);
             byte flag = reader.ReadByte();
@@ -115,6 +127,6 @@ namespace GoodTimeStudio.MyPhone.OBEX.Map
         /// <summary>
         /// Navigate to the child folder (equivalent to "cd folderName")
         /// </summary>
-        EnterFolder
+        EnterFolder,
     }
 }

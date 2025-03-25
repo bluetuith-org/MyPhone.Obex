@@ -13,19 +13,18 @@ namespace GoodTimeStudio.MyPhone.OBEX.Bluetooth
         public BluetoothError? BluetoothError { get; }
         public SocketErrorStatus? SocketError { get; }
 
-        public BluetoothObexSessionException()
-        {
-        }
+        public BluetoothObexSessionException() { }
 
-        public BluetoothObexSessionException(string message) : base(message)
-        {
-        }
+        public BluetoothObexSessionException(string message)
+            : base(message) { }
 
         public BluetoothObexSessionException(
             string message,
             ObexException? innerException = null,
             BluetoothError? bluetoothError = null,
-            SocketErrorStatus? socketError = null) : base(message)
+            SocketErrorStatus? socketError = null
+        )
+            : base(message)
         {
             InnerException = innerException;
             BluetoothError = bluetoothError;
@@ -39,17 +38,13 @@ namespace GoodTimeStudio.MyPhone.OBEX.Bluetooth
     /// </summary>
     public class BluetoothServiceNotSupportedException : BluetoothObexSessionException
     {
-        public BluetoothServiceNotSupportedException()
-        {
-        }
+        public BluetoothServiceNotSupportedException() { }
 
-        public BluetoothServiceNotSupportedException(string message) : base(message)
-        {
-        }
+        public BluetoothServiceNotSupportedException(string message)
+            : base(message) { }
 
-        public BluetoothServiceNotSupportedException(string message, ObexException innerException) : base(message, innerException)
-        {
-        }
+        public BluetoothServiceNotSupportedException(string message, ObexException innerException)
+            : base(message, innerException) { }
     }
 
     /// <summary>
@@ -57,8 +52,7 @@ namespace GoodTimeStudio.MyPhone.OBEX.Bluetooth
     /// </summary>
     public class BluetoothDeviceNotAvailableException : BluetoothObexSessionException
     {
-        public BluetoothDeviceNotAvailableException(string message) : base(message)
-        {
-        }
+        public BluetoothDeviceNotAvailableException(string message)
+            : base(message) { }
     }
 }

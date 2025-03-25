@@ -28,7 +28,7 @@ namespace GoodTimeStudio.MyPhone.OBEX.Map
         MapSupportedFeaturesInConnectRequest = 524288,
         ConversationListing = 1048576,
         OwnerStatus = 2097152,
-        MessageForwarding = 4194304
+        MessageForwarding = 4194304,
         // As of MAP v1.4.2
     }
 }

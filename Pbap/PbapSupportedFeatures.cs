@@ -15,6 +15,6 @@ namespace GoodTimeStudio.MyPhone.OBEX.Pbap
         X_BT_UCI_VCardProperty = 64,
         X_BT_UID_VCardProperty = 128,
         ContactReferencing = 256,
-        DefaultContactImageFormat = 512
+        DefaultContactImageFormat = 512,
     }
 }

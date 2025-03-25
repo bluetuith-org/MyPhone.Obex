@@ -17,6 +17,6 @@
         DatabaseIdentifier,
         VCardSelectorOperator,
         ResetNewMissedCalls,
-        PbapSupportedFeatures
+        PbapSupportedFeatures,
     }
 }

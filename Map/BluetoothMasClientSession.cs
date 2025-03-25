@@ -1,10 +1,10 @@
-﻿using GoodTimeStudio.MyPhone.OBEX.Bluetooth;
-using System;
+﻿using System;
 using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
+using GoodTimeStudio.MyPhone.OBEX.Bluetooth;
 using Windows.Devices.Bluetooth;
 using Windows.Networking.Sockets;
 
@@ -18,20 +18,27 @@ namespace GoodTimeStudio.MyPhone.OBEX.Map
 
         public MapSupportedFeatures SupportedFeatures { get; private set; }
 
-        public BluetoothMasClientSession(BluetoothDevice bluetoothDevice, CancellationTokenSource token) : base(bluetoothDevice, MAP_Id, ObexServiceUuid.MessageAccess, token)
-        {
-        }
+        public BluetoothMasClientSession(
+            BluetoothDevice bluetoothDevice,
+            CancellationTokenSource token
+        )
+            : base(bluetoothDevice, MAP_Id, ObexServiceUuid.MessageAccess, token) { }
 
         protected override bool CheckFeaturesRequirementBySdpRecords()
         {
             Debug.Assert(SdpRecords != null);
 
             {
-                if (SdpRecords.TryGetValue(0x9, out IReadOnlyCollection<byte>? rawAttributeValue)
+                if (
+                    SdpRecords.TryGetValue(0x9, out IReadOnlyCollection<byte>? rawAttributeValue)
                     && rawAttributeValue != null
-                    && rawAttributeValue.Count >= 10)
+                    && rawAttributeValue.Count >= 10
+                )
                 {
-                    ProfileVersion = new Version(rawAttributeValue.ElementAt(8), rawAttributeValue.ElementAt(9));
+                    ProfileVersion = new Version(
+                        rawAttributeValue.ElementAt(8),
+                        rawAttributeValue.ElementAt(9)
+                    );
                 }
                 else
                 {
@@ -40,10 +47,15 @@ namespace GoodTimeStudio.MyPhone.OBEX.Map
             }
 
             {
-                if (SdpRecords.TryGetValue(0x317, out IReadOnlyCollection<byte>? rawAttributeValue) && rawAttributeValue != null)
+                if (
+                    SdpRecords.TryGetValue(0x317, out IReadOnlyCollection<byte>? rawAttributeValue)
+                    && rawAttributeValue != null
+                )
                 {
-                    SupportedFeatures = (MapSupportedFeatures)BinaryPrimitives.ReadInt32BigEndian(
-                        new ReadOnlySpan<byte>(rawAttributeValue.Skip(1).ToArray()));
+                    SupportedFeatures = (MapSupportedFeatures)
+                        BinaryPrimitives.ReadInt32BigEndian(
+                            new ReadOnlySpan<byte>(rawAttributeValue.Skip(1).ToArray())
+                        );
                 }
                 else
                 {
@@ -55,7 +67,10 @@ namespace GoodTimeStudio.MyPhone.OBEX.Map
             return true;
         }
 
-        public override MasClient CreateObexClient(StreamSocket socket, CancellationTokenSource token)
+        public override MasClient CreateObexClient(
+            StreamSocket socket,
+            CancellationTokenSource token
+        )
         {
             return new MasClient(socket, token);
         }

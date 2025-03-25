@@ -39,7 +39,6 @@ namespace GoodTimeStudio.MyPhone.OBEX.Map
             "reception_status",
             "attachment_size",
             "recipient_addressing",
-
             // Optional/Implied
             "sender_name",
             "sender_addressing",

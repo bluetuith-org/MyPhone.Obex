@@ -5,6 +5,7 @@ namespace GoodTimeStudio.MyPhone.OBEX.Map
     public class SmsFolder
     {
         public string Name { get; }
+
         /// <summary>
         /// Number of accessible messages in this folder
         /// </summary>
@@ -23,6 +24,7 @@ namespace GoodTimeStudio.MyPhone.OBEX.Map
             Parent = parent;
         }
 
-        public SmsFolder(string folderName, SmsFolder? parent = null) : this(folderName, 0, parent) { }
+        public SmsFolder(string folderName, SmsFolder? parent = null)
+            : this(folderName, 0, parent) { }
     }
 }

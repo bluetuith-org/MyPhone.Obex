@@ -3,12 +3,12 @@
     public enum HeaderId : byte
     {
         /// <summary>
-        /// Number of objects (used by Connect) 
+        /// Number of objects (used by Connect)
         /// </summary>
         Count = 0xC0,
 
         /// <summary>
-        /// Name of the object (often a file name) 
+        /// Name of the object (often a file name)
         /// </summary>
         Name = 0x01,
 
@@ -33,7 +33,7 @@
         Time_Compatiable = 0xC4,
 
         /// <summary>
-        /// Text description of the object 
+        /// Text description of the object
         /// </summary>
         Description = 0x05,
 
@@ -43,7 +43,7 @@
         Target = 0x46,
 
         /// <summary>
-        /// An HTTP 1.x header 
+        /// An HTTP 1.x header
         /// </summary>
         HTTP = 0x47,
 
@@ -63,7 +63,7 @@
         Who = 0x4A,
 
         /// <summary>
-        /// An identifier used for OBEX connection multiplexing 
+        /// An identifier used for OBEX connection multiplexing
         /// </summary>
         ConnectionId = 0xCB,
 
@@ -83,7 +83,7 @@
         AuthResponse = 0x4E,
 
         /// <summary>
-        /// Indicates the creator of an object 
+        /// Indicates the creator of an object
         /// </summary>
         CreatorId = 0xCF,
 
@@ -93,7 +93,7 @@
         WAN_UUID = 0x50,
 
         /// <summary>
-        /// OBEX Object class of object 
+        /// OBEX Object class of object
         /// </summary>
         ObjectClass = 0x51,
 
@@ -106,7 +106,6 @@
         /// Sequence number used in each OBEX packet for reliability
         /// </summary>
         SessionSequenceNumber = 0x93,
-
 
         /// <summary>
         /// The Single Response Mode header is Mandatory in the first packet IF GOEP 2.0 or later is used; otherwise Excluded
@@ -128,7 +127,6 @@
         Put = 0x02,
         Get = 0x03,
         Action = 0x06,
-
 
         //OBEX Response Code
         Continue = 0x10,
@@ -184,5 +182,4 @@
         public static readonly byte ATTACHMENT_OFF = 0x00;
         public static readonly byte ATTACHMENT_ON = 0x01;
     }
-
 }

@@ -1,6 +1,6 @@
-﻿using GoodTimeStudio.MyPhone.OBEX.Headers;
-using System;
+﻿using System;
 using System.Threading.Tasks;
+using GoodTimeStudio.MyPhone.OBEX.Headers;
 using Windows.Storage.Streams;
 
 namespace GoodTimeStudio.MyPhone.OBEX
@@ -20,13 +20,16 @@ namespace GoodTimeStudio.MyPhone.OBEX
         /// <summary>
         /// Create a empty instance ready for reading content from stream
         /// </summary>
-        public ObexConnectPacket() : base(new ObexOpcode(ObexOperation.ServiceUnavailable, true))
-        { }
+        public ObexConnectPacket()
+            : base(new ObexOpcode(ObexOperation.ServiceUnavailable, true)) { }
 
-        public ObexConnectPacket(ObexServiceUuid targetService) : this(false, targetService)
-        { }
+        public ObexConnectPacket(ObexServiceUuid targetService)
+            : this(false, targetService) { }
 
-        public ObexConnectPacket(bool disconnect, ObexServiceUuid targetService) : base(new ObexOpcode(disconnect ? ObexOperation.Disconnect : ObexOperation.Connect, true))
+        public ObexConnectPacket(bool disconnect, ObexServiceUuid targetService)
+            : base(
+                new ObexOpcode(disconnect ? ObexOperation.Disconnect : ObexOperation.Connect, true)
+            )
         {
             Headers[HeaderId.Target] = new ObexHeader(HeaderId.Target, targetService.Value);
         }
@@ -43,7 +46,9 @@ namespace GoodTimeStudio.MyPhone.OBEX
             uint loaded = await reader.LoadAsync(_EXTRA_FIELD_BITS);
             if (loaded != _EXTRA_FIELD_BITS)
             {
-                throw new ObexException("The underlying socket was closed before we were able to read the whole data.");
+                throw new ObexException(
+                    "The underlying socket was closed before we were able to read the whole data."
+                );
             }
             OBEXVersion = reader.ReadByte();
             Flags = reader.ReadByte();

@@ -1,9 +1,9 @@
-﻿using GoodTimeStudio.MyPhone.OBEX.Headers;
-using System;
+﻿using System;
 using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading;
 using System.Threading.Tasks;
+using GoodTimeStudio.MyPhone.OBEX.Headers;
 using Windows.Storage.Streams;
 
 namespace GoodTimeStudio.MyPhone.OBEX
@@ -17,7 +17,12 @@ namespace GoodTimeStudio.MyPhone.OBEX
 
         protected CancellationTokenSource _cts;
 
-        public ObexServer(IInputStream inputStream, IOutputStream outputStream, ObexServiceUuid serviceUuid, CancellationTokenSource token)
+        public ObexServer(
+            IInputStream inputStream,
+            IOutputStream outputStream,
+            ObexServiceUuid serviceUuid,
+            CancellationTokenSource token
+        )
         {
             _reader = new DataReader(inputStream);
             _writer = new DataWriter(outputStream);
@@ -44,7 +49,6 @@ namespace GoodTimeStudio.MyPhone.OBEX
                             break;
                         }
                     }
-
                 }
 
                 packet = new ObexPacket(new ObexOpcode(ObexOperation.ServiceUnavailable, true));
@@ -77,10 +81,7 @@ namespace GoodTimeStudio.MyPhone.OBEX
             _cts.Cancel();
         }
 
-        public virtual void CancelTransfer()
-        {
-
-        }
+        public virtual void CancelTransfer() { }
 
         /// <summary>
         /// Handle client request.

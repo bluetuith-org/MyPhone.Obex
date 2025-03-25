@@ -13,7 +13,12 @@ namespace GoodTimeStudio.MyPhone.OBEX
         public string MessageHandle { get; set; } = "";
         public string Folder { get; set; } = "";
 
-        public MessageReceivedEventArgs(string eventType, string messageType, string folder, string messageHandle)
+        public MessageReceivedEventArgs(
+            string eventType,
+            string messageType,
+            string folder,
+            string messageHandle
+        )
         {
             EventType = eventType;
             MessageType = messageType;
@@ -62,10 +67,17 @@ namespace GoodTimeStudio.MyPhone.OBEX
 
     public class MnsServer : ObexServer
     {
-        public MnsServer(IInputStream inputStream, IOutputStream outputStream, CancellationTokenSource token) : base(inputStream, outputStream, ObexServiceUuid.MessageNotification, token)
-        { }
+        public MnsServer(
+            IInputStream inputStream,
+            IOutputStream outputStream,
+            CancellationTokenSource token
+        )
+            : base(inputStream, outputStream, ObexServiceUuid.MessageNotification, token) { }
 
-        public delegate void MnsMessageReceivedEventHandler(object sender, MessageReceivedEventArgs e);
+        public delegate void MnsMessageReceivedEventHandler(
+            object sender,
+            MessageReceivedEventArgs e
+        );
         public event MnsMessageReceivedEventHandler? MessageReceived;
 
         protected override ObexPacket? OnClientRequest(ObexPacket clientRequestPacket)

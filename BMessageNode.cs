@@ -23,7 +23,13 @@ namespace GoodTimeStudio.MyPhone.OBEX
 
         public override string ToString()
         {
-            return "BEGIN:" + NodeName + Environment.NewLine + Value + Environment.NewLine + "END:" + NodeName;
+            return "BEGIN:"
+                + NodeName
+                + Environment.NewLine
+                + Value
+                + Environment.NewLine
+                + "END:"
+                + NodeName;
         }
 
         public static BMessageNode Parse(string bMessageString)
@@ -39,7 +45,12 @@ namespace GoodTimeStudio.MyPhone.OBEX
             return _parseRecursive(ref reader, root, 1);
         }
 
-        private static BMessageNode _parseRecursive(ref StringReader reader, BMessageNode root, int lineNum, bool ignoreAttr = false)
+        private static BMessageNode _parseRecursive(
+            ref StringReader reader,
+            BMessageNode root,
+            int lineNum,
+            bool ignoreAttr = false
+        )
         {
             string line = reader.ReadLine().Trim();
 
@@ -51,14 +62,25 @@ namespace GoodTimeStudio.MyPhone.OBEX
                     {
                         case "BEGIN:MSG":
                         case "BEGIN:VCARD":
-                            root.ChildrenNode.Add(line.Substring(6),
-                            _parseRecursive(ref reader, new BMessageNode(line.Substring(6)),
-                            lineNum, true));
+                            root.ChildrenNode.Add(
+                                line.Substring(6),
+                                _parseRecursive(
+                                    ref reader,
+                                    new BMessageNode(line.Substring(6)),
+                                    lineNum,
+                                    true
+                                )
+                            );
                             break;
                         default:
-                            root.ChildrenNode.Add(line.Substring(6),
-                            _parseRecursive(ref reader, new BMessageNode(line.Substring(6)),
-                            lineNum));
+                            root.ChildrenNode.Add(
+                                line.Substring(6),
+                                _parseRecursive(
+                                    ref reader,
+                                    new BMessageNode(line.Substring(6)),
+                                    lineNum
+                                )
+                            );
                             break;
                     }
                 }
@@ -66,7 +88,10 @@ namespace GoodTimeStudio.MyPhone.OBEX
                 {
                     if (line.Substring(4) != root.NodeName)
                     {
-                        throw new BMessageException(lineNum, "Enclosing node name does not equal to opening node name.");
+                        throw new BMessageException(
+                            lineNum,
+                            "Enclosing node name does not equal to opening node name."
+                        );
                     }
                     return root;
                 }
@@ -96,16 +121,18 @@ namespace GoodTimeStudio.MyPhone.OBEX
 
     public class BMessageException : Exception
     {
-        public BMessageException(int lineNumber) : base($"Error at line {lineNumber}. The provided string is not a valid bMessage.")
-        {
-        }
+        public BMessageException(int lineNumber)
+            : base($"Error at line {lineNumber}. The provided string is not a valid bMessage.") { }
 
         public BMessageException(int lineNumber, string message)
-            : base($"Error at line {lineNumber}: {message}. The provided string is not a valid bMessage.") { }
+            : base(
+                $"Error at line {lineNumber}: {message}. The provided string is not a valid bMessage."
+            ) { }
 
         public BMessageException(int lineNumber, string message, Exception inner)
-            : base($"Error at line {lineNumber}: {message}. The provided string is not a valid bMessage.", inner)
-        {
-        }
+            : base(
+                $"Error at line {lineNumber}: {message}. The provided string is not a valid bMessage.",
+                inner
+            ) { }
     }
 }

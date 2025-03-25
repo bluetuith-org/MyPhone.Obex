@@ -1,10 +1,10 @@
-﻿using GoodTimeStudio.MyPhone.OBEX.Headers;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
+using GoodTimeStudio.MyPhone.OBEX.Headers;
 using Windows.Networking.Sockets;
 
 namespace GoodTimeStudio.MyPhone.OBEX.Map
@@ -16,9 +16,8 @@ namespace GoodTimeStudio.MyPhone.OBEX.Map
         /// </remarks>
         private ObexHeader? _connectionIdHeader;
 
-        public MasClient(StreamSocket socket, CancellationTokenSource token) : base(socket.InputStream, socket.OutputStream, token)
-        {
-        }
+        public MasClient(StreamSocket socket, CancellationTokenSource token)
+            : base(socket.InputStream, socket.OutputStream, token) { }
 
         protected override void OnConnected(ObexPacket connectionResponse)
         {
@@ -40,7 +39,11 @@ namespace GoodTimeStudio.MyPhone.OBEX.Map
         /// <remarks>If you try to get the listing size, please call <see cref="GetMessageListingSizeAsync"/> instead.</remarks>
         /// <returns>message handle list</returns>
         /// TODO: return Messages-Listing objects
-        public async Task<List<MessageListing>> GetMessagesListingAsync(ushort listStartOffset, ushort maxListCount, string folderName = "telecom")
+        public async Task<List<MessageListing>> GetMessagesListingAsync(
+            ushort listStartOffset,
+            ushort maxListCount,
+            string folderName = "telecom"
+        )
         {
             ObexPacket packet = new ObexPacket(
                 new ObexOpcode(ObexOperation.Get, true),
@@ -49,8 +52,9 @@ namespace GoodTimeStudio.MyPhone.OBEX.Map
                 new ObexHeader(HeaderId.Name, folderName, true, Encoding.BigEndianUnicode),
                 new AppParameterHeaderBuilder(
                     new AppParameter((byte)MasAppParamTagId.ListStartOffset, listStartOffset),
-                    new AppParameter((byte)MasAppParamTagId.MaxListCount, maxListCount)).Build()
-                );
+                    new AppParameter((byte)MasAppParamTagId.MaxListCount, maxListCount)
+                ).Build()
+            );
 
             ObexPacket resp = await RunObexRequestAsync(packet);
             string listingObj = resp.GetBodyContentAsUtf8String(false);
@@ -66,11 +70,13 @@ namespace GoodTimeStudio.MyPhone.OBEX.Map
                 new ObexHeader(HeaderId.Type, "x-bt/MAP-msg-listing", true, Encoding.UTF8),
                 new ObexHeader(HeaderId.Name, folderName, true, Encoding.BigEndianUnicode),
                 new AppParameterHeaderBuilder(
-                    new AppParameter((byte)MasAppParamTagId.MaxListCount, 0)).Build()
-                );
+                    new AppParameter((byte)MasAppParamTagId.MaxListCount, 0)
+                ).Build()
+            );
 
             ObexPacket response = await RunObexRequestAsync(packet);
-            AppParameterDictionary paramDict = response.GetHeader(HeaderId.ApplicationParameters)
+            AppParameterDictionary paramDict = response
+                .GetHeader(HeaderId.ApplicationParameters)
                 .GetValueAsAppParameters();
             return paramDict[(byte)MasAppParamTagId.ListingSize].GetValueAsUInt16();
         }
@@ -85,9 +91,8 @@ namespace GoodTimeStudio.MyPhone.OBEX.Map
                 new AppParameterHeaderBuilder(
                     new AppParameter((byte)MasAppParamTagId.Attachment, MasConstants.ATTACHMENT_ON),
                     new AppParameter((byte)MasAppParamTagId.Charset, MasConstants.CHARSET_UTF8)
-                    ).Build()
-                );
-
+                ).Build()
+            );
 
             ObexPacket resp = await RunObexRequestAsync(packet);
 
@@ -100,7 +105,10 @@ namespace GoodTimeStudio.MyPhone.OBEX.Map
             }
             catch (BMessageException ex)
             {
-                throw new ObexException($"Failed to get message (handle: {messageHandle}) from MSE. The MSE send back a invalid response", ex);
+                throw new ObexException(
+                    $"Failed to get message (handle: {messageHandle}) from MSE. The MSE send back a invalid response",
+                    ex
+                );
             }
 
             return bMsg;
@@ -113,11 +121,17 @@ namespace GoodTimeStudio.MyPhone.OBEX.Map
             ObexPacket packet = new ObexPacket(
                 new ObexOpcode(ObexOperation.Put, true),
                 _connectionIdHeader!,
-                new ObexHeader(HeaderId.Type, "x-bt/MAP-NotificationRegistration", true, Encoding.UTF8),
+                new ObexHeader(
+                    HeaderId.Type,
+                    "x-bt/MAP-NotificationRegistration",
+                    true,
+                    Encoding.UTF8
+                ),
                 new AppParameterHeaderBuilder(
-                    new AppParameter((byte)MasAppParamTagId.NotificationStatus, flag)).Build(),
+                    new AppParameter((byte)MasAppParamTagId.NotificationStatus, flag)
+                ).Build(),
                 new ObexHeader(HeaderId.EndOfBody, 0x30)
-                );
+            );
 
             await RunObexRequestAsync(packet);
         }
@@ -129,8 +143,12 @@ namespace GoodTimeStudio.MyPhone.OBEX.Map
                 _connectionIdHeader!,
                 new ObexHeader(HeaderId.Type, "x-bt/MASInstanceInformation", true, Encoding.UTF8),
                 new AppParameterHeaderBuilder(
-                    new AppParameter((byte)MasAppParamTagId.MASInstanceID, ObexServiceUuid.MessageAccess.Value)).Build()
-                );
+                    new AppParameter(
+                        (byte)MasAppParamTagId.MASInstanceID,
+                        ObexServiceUuid.MessageAccess.Value
+                    )
+                ).Build()
+            );
 
             await RunObexRequestAsync(packet);
         }
@@ -141,7 +159,10 @@ namespace GoodTimeStudio.MyPhone.OBEX.Map
         /// <param name="maxListCount">The maximum number of folders to retrieve (default 1024).</param>
         /// <param name="listStartOffset">The offset of the first entry of the returned folder</param>
         /// <returns>List of children folder name</returns>
-        public async Task<List<string>> GetFolderListingAsync(ushort? maxListCount = null, ushort? listStartOffset = null)
+        public async Task<List<string>> GetFolderListingAsync(
+            ushort? maxListCount = null,
+            ushort? listStartOffset = null
+        )
         {
             ObexPacket packet = new ObexPacket(
                 new(ObexOperation.Get, true),
@@ -153,15 +174,21 @@ namespace GoodTimeStudio.MyPhone.OBEX.Map
                 AppParameterHeaderBuilder builder = new();
                 if (maxListCount != null)
                 {
-                    builder.AppParameters.Add(new AppParameter((byte)MasAppParamTagId.MaxListCount, maxListCount.Value));
+                    builder.AppParameters.Add(
+                        new AppParameter((byte)MasAppParamTagId.MaxListCount, maxListCount.Value)
+                    );
                 }
                 if (listStartOffset != null)
                 {
-                    builder.AppParameters.Add(new AppParameter((byte)MasAppParamTagId.ListStartOffset, listStartOffset.Value));
+                    builder.AppParameters.Add(
+                        new AppParameter(
+                            (byte)MasAppParamTagId.ListStartOffset,
+                            listStartOffset.Value
+                        )
+                    );
                 }
                 packet.Headers[HeaderId.ApplicationParameters] = builder.Build();
             }
-
 
             ObexPacket resp = await RunObexRequestAsync(packet);
 
@@ -189,10 +216,15 @@ namespace GoodTimeStudio.MyPhone.OBEX.Map
                 new ObexHeader(HeaderId.Type, "x-bt/message", true, Encoding.UTF8),
                 new ObexHeader(HeaderId.Type, "telecom/msg/inbox", true, Encoding.BigEndianUnicode),
                 new AppParameterHeaderBuilder(
-                    new AppParameter((byte)MasAppParamTagId.Charset, MasConstants.CHARSET_UTF8)).Build(),
-                new ObexHeader(HeaderId.EndOfBody, "test pushing message from MCE", true, Encoding.UTF8)
-                );
-
+                    new AppParameter((byte)MasAppParamTagId.Charset, MasConstants.CHARSET_UTF8)
+                ).Build(),
+                new ObexHeader(
+                    HeaderId.EndOfBody,
+                    "test pushing message from MCE",
+                    true,
+                    Encoding.UTF8
+                )
+            );
 
             await RunObexRequestAsync(packet);
         }
@@ -297,6 +329,5 @@ namespace GoodTimeStudio.MyPhone.OBEX.Map
 
             return root;
         }
-
     }
 }

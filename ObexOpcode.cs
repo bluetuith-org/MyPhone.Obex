@@ -5,8 +5,14 @@ namespace GoodTimeStudio.MyPhone.OBEX
     public class ObexOpcode
     {
         public byte Value { get; }
-        public bool IsFinalBitSet { get => Value >> 7 == 1; }
-        public bool IsInUserDefinedRange { get => 0x10 < Value && Value <= 0x1F; }
+        public bool IsFinalBitSet
+        {
+            get => Value >> 7 == 1;
+        }
+        public bool IsInUserDefinedRange
+        {
+            get => 0x10 < Value && Value <= 0x1F;
+        }
 
         /// <summary>
         /// Return a <see cref="OBEX.ObexOperation"/> if this opcode represents a OBEX operation. Otherwise, return null.
@@ -29,7 +35,6 @@ namespace GoodTimeStudio.MyPhone.OBEX
             }
         }
 
-
         public ObexOpcode(ObexOperation opcodeValue, bool isFinalBitSet)
         {
             Value = (byte)opcodeValue;
@@ -42,7 +47,10 @@ namespace GoodTimeStudio.MyPhone.OBEX
                 case OBEX.ObexOperation.Abort:
                     if (!isFinalBitSet)
                     {
-                        throw new ArgumentException(nameof(IsFinalBitSet), $"high bit of {opcodeValue} must be set");
+                        throw new ArgumentException(
+                            nameof(IsFinalBitSet),
+                            $"high bit of {opcodeValue} must be set"
+                        );
                     }
                     break;
                 default:
@@ -76,7 +84,6 @@ namespace GoodTimeStudio.MyPhone.OBEX
                     throw new InvalidObexOpcodeException(rawOpcode);
                 }
             }
-
         }
 
         /// <summary>
@@ -89,11 +96,9 @@ namespace GoodTimeStudio.MyPhone.OBEX
             return false;
         }
 
-
         public override bool Equals(object? obj)
         {
-            return obj is ObexOpcode opcode &&
-                   Value == opcode.Value;
+            return obj is ObexOpcode opcode && Value == opcode.Value;
         }
 
         public override int GetHashCode()

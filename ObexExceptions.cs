@@ -7,17 +7,13 @@ namespace GoodTimeStudio.MyPhone.OBEX
     /// </summary>
     public class ObexException : Exception
     {
-        public ObexException()
-        {
-        }
+        public ObexException() { }
 
-        public ObexException(string message) : base(message)
-        {
-        }
+        public ObexException(string message)
+            : base(message) { }
 
-        public ObexException(string message, Exception innerException) : base(message, innerException)
-        {
-        }
+        public ObexException(string message, Exception innerException)
+            : base(message, innerException) { }
     }
 
     /// <summary>
@@ -35,12 +31,14 @@ namespace GoodTimeStudio.MyPhone.OBEX
             Opcode = opcode;
         }
 
-        public ObexRequestException(ObexOpcode opcode, string message) : base(message)
+        public ObexRequestException(ObexOpcode opcode, string message)
+            : base(message)
         {
             Opcode = opcode;
         }
 
-        public ObexRequestException(ObexOpcode opcode, string message, Exception innerException) : base(message, innerException)
+        public ObexRequestException(ObexOpcode opcode, string message, Exception innerException)
+            : base(message, innerException)
         {
             Opcode = opcode;
         }
@@ -50,16 +48,17 @@ namespace GoodTimeStudio.MyPhone.OBEX
     {
         public byte RawOpcode { get; }
 
-        public InvalidObexOpcodeException(byte rawOpcode) : this(rawOpcode, $"Invalid opcode {rawOpcode}")
-        {
-        }
+        public InvalidObexOpcodeException(byte rawOpcode)
+            : this(rawOpcode, $"Invalid opcode {rawOpcode}") { }
 
-        public InvalidObexOpcodeException(byte rawOpcode, string message) : base(message)
+        public InvalidObexOpcodeException(byte rawOpcode, string message)
+            : base(message)
         {
             RawOpcode = rawOpcode;
         }
 
-        public InvalidObexOpcodeException(byte rawOpcode, string message, Exception innerException) : base(message, innerException)
+        public InvalidObexOpcodeException(byte rawOpcode, string message, Exception innerException)
+            : base(message, innerException)
         {
             RawOpcode = rawOpcode;
         }

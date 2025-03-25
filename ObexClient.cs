@@ -1,8 +1,8 @@
-﻿using GoodTimeStudio.MyPhone.OBEX.Headers;
-using System;
+﻿using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using GoodTimeStudio.MyPhone.OBEX.Headers;
 using Windows.Storage.Streams;
 
 namespace GoodTimeStudio.MyPhone.OBEX
@@ -16,7 +16,11 @@ namespace GoodTimeStudio.MyPhone.OBEX
 
         public bool Conntected { get; private set; } = false;
 
-        public ObexClient(IInputStream inputStream, IOutputStream outputStream, CancellationTokenSource token)
+        public ObexClient(
+            IInputStream inputStream,
+            IOutputStream outputStream,
+            CancellationTokenSource token
+        )
         {
             _reader = new DataReader(inputStream);
             _writer = new DataWriter(outputStream);
@@ -33,7 +37,9 @@ namespace GoodTimeStudio.MyPhone.OBEX
         {
             if (Conntected)
             {
-                throw new InvalidOperationException("ObexClient is already connected to a ObexServer");
+                throw new InvalidOperationException(
+                    "ObexClient is already connected to a ObexServer"
+                );
             }
 
             ObexConnectPacket packet = new ObexConnectPacket(targetService);
@@ -42,11 +48,16 @@ namespace GoodTimeStudio.MyPhone.OBEX
             _writer.WriteBuffer(buf);
             await _writer.StoreAsync();
 
-            ObexConnectPacket response = await ObexPacket.ReadFromStream<ObexConnectPacket>(_reader);
+            ObexConnectPacket response = await ObexPacket.ReadFromStream<ObexConnectPacket>(
+                _reader
+            );
 
             if (response.Opcode.ObexOperation != ObexOperation.Success)
             {
-                throw new ObexRequestException(response.Opcode, $"Unable to connect to the target OBEX service.");
+                throw new ObexRequestException(
+                    response.Opcode,
+                    $"Unable to connect to the target OBEX service."
+                );
             }
 
             Conntected = true;
@@ -59,7 +70,9 @@ namespace GoodTimeStudio.MyPhone.OBEX
         {
             if (!Conntected)
             {
-                throw new InvalidOperationException("ObexClient is not connected to any ObexServer");
+                throw new InvalidOperationException(
+                    "ObexClient is not connected to any ObexServer"
+                );
             }
         }
 
@@ -84,7 +97,9 @@ namespace GoodTimeStudio.MyPhone.OBEX
         {
             if (!Conntected)
             {
-                throw new InvalidOperationException("ObexClient is not connected to any ObexServer");
+                throw new InvalidOperationException(
+                    "ObexClient is not connected to any ObexServer"
+                );
             }
 
             _cancellationTokenSource.Token.ThrowIfCancellationRequested();
@@ -122,7 +137,12 @@ namespace GoodTimeStudio.MyPhone.OBEX
                     switch (subResponse.Opcode.ObexOperation)
                     {
                         case ObexOperation.Success:
-                            if (subResponse.Headers.TryGetValue(HeaderId.EndOfBody, out ObexHeader? endOfBodyHeader))
+                            if (
+                                subResponse.Headers.TryGetValue(
+                                    HeaderId.EndOfBody,
+                                    out ObexHeader? endOfBodyHeader
+                                )
+                            )
                             {
                                 bodyMemoryStream.Write(endOfBodyHeader.Buffer);
                             }
@@ -130,13 +150,21 @@ namespace GoodTimeStudio.MyPhone.OBEX
                             response.BodyBuffer = bodyMemoryStream.ToArray();
                             return response;
                         case ObexOperation.Continue:
-                            if (subResponse.Headers.TryGetValue(HeaderId.Body, out ObexHeader? bodyHeader))
+                            if (
+                                subResponse.Headers.TryGetValue(
+                                    HeaderId.Body,
+                                    out ObexHeader? bodyHeader
+                                )
+                            )
                             {
                                 bodyMemoryStream.Write(bodyHeader.Buffer);
                             }
                             break;
                         default:
-                            throw new ObexRequestException(subResponse.Opcode, $"The {requestOperation} request failed with opcode {subResponse.Opcode}");
+                            throw new ObexRequestException(
+                                subResponse.Opcode,
+                                $"The {requestOperation} request failed with opcode {subResponse.Opcode}"
+                            );
                     }
 
                     req = new ObexPacket(new ObexOpcode(requestOperation.Value, true));

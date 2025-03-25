@@ -1,7 +1,7 @@
-﻿using GoodTimeStudio.MyPhone.OBEX.Bluetooth;
-using System;
+﻿using System;
 using System.IO;
 using System.Threading;
+using GoodTimeStudio.MyPhone.OBEX.Bluetooth;
 using Windows.Networking.Sockets;
 
 namespace GoodTimeStudio.MyPhone.OBEX.Opp
@@ -12,12 +12,16 @@ namespace GoodTimeStudio.MyPhone.OBEX.Opp
 
         protected readonly string _destinationDirectory = "";
 
-        public BluetoothOppServerSession(CancellationTokenSource token, string destinationDirectory) : base(OPP_ID, token)
+        public BluetoothOppServerSession(CancellationTokenSource token, string destinationDirectory)
+            : base(OPP_ID, token)
         {
             _destinationDirectory = destinationDirectory;
         }
 
-        protected override OppServer CreateObexServer(StreamSocket clientSocket, CancellationTokenSource token)
+        protected override OppServer CreateObexServer(
+            StreamSocket clientSocket,
+            CancellationTokenSource token
+        )
         {
             return new OppServer(clientSocket, token, _destinationDirectory);
         }

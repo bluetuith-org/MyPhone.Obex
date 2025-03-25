@@ -1,12 +1,11 @@
-﻿using MixERP.Net.VCards;
-using System;
+﻿using System;
 using System.Collections.Generic;
+using MixERP.Net.VCards;
 
 namespace GoodTimeStudio.MyPhone.OBEX
 {
     public class BMessage
     {
-
         public BMessageStatus Status { get; set; }
 
         public string Type { get; set; }
@@ -21,7 +20,15 @@ namespace GoodTimeStudio.MyPhone.OBEX
 
         public string Body { get; set; }
 
-        public BMessage(BMessageStatus status, string type, string folder, VCard sender, string charset, int length, string body)
+        public BMessage(
+            BMessageStatus status,
+            string type,
+            string folder,
+            VCard sender,
+            string charset,
+            int length,
+            string body
+        )
         {
             Status = status;
             Type = type ?? throw new ArgumentNullException(nameof(type));
@@ -39,15 +46,25 @@ namespace GoodTimeStudio.MyPhone.OBEX
             BMessage bMessage = new();
             BMessageNode bMsgNode = BMessageNode.Parse(bMsg);
 
-            foreach (var item in new List<string>() {
-                "STATUS", "TYPE", "FOLDER", "CHARSET", "LENGTH", "MSG", "VCARD"
-            })
+            foreach (
+                var item in new List<string>()
+                {
+                    "STATUS",
+                    "TYPE",
+                    "FOLDER",
+                    "CHARSET",
+                    "LENGTH",
+                    "MSG",
+                    "VCARD",
+                }
+            )
             {
                 switch (item)
                 {
                     case "STATUS":
                         if (bMsgNode.Attributes.TryGetValue(item, out var status))
-                            bMessage.Status = status == "UNREAD" ? BMessageStatus.UNREAD : BMessageStatus.READ;
+                            bMessage.Status =
+                                status == "UNREAD" ? BMessageStatus.UNREAD : BMessageStatus.READ;
                         break;
                     case "TYPE":
                         if (bMsgNode.Attributes.TryGetValue(item, out var type))
@@ -79,16 +96,23 @@ namespace GoodTimeStudio.MyPhone.OBEX
             return bMessage;
         }
 
-        private static bool TryGetAttributeFromBodyNode(BMessageNode bMsgNode, bool itemIsChildNode, string item, out string value)
+        private static bool TryGetAttributeFromBodyNode(
+            BMessageNode bMsgNode,
+            bool itemIsChildNode,
+            string item,
+            out string value
+        )
         {
             if (bMsgNode.ChildrenNode.TryGetValue("BENV", out var benv))
                 if (benv.ChildrenNode.TryGetValue("BBODY", out var bbody))
                 {
                     if (itemIsChildNode)
                     {
-                        if (bbody.ChildrenNode.TryGetValue(item, out var childNode) &&
-                            childNode != null &&
-                            !string.IsNullOrEmpty(childNode.Value))
+                        if (
+                            bbody.ChildrenNode.TryGetValue(item, out var childNode)
+                            && childNode != null
+                            && !string.IsNullOrEmpty(childNode.Value)
+                        )
                         {
                             if (item == "VCARD")
                                 value = childNode.ToString();
@@ -100,9 +124,11 @@ namespace GoodTimeStudio.MyPhone.OBEX
                     }
                     else
                     {
-                        if (bbody.Attributes.TryGetValue(item, out var attribute) &&
-                            attribute != null &&
-                            !string.IsNullOrEmpty(attribute))
+                        if (
+                            bbody.Attributes.TryGetValue(item, out var attribute)
+                            && attribute != null
+                            && !string.IsNullOrEmpty(attribute)
+                        )
                         {
                             value = attribute;
                             return true;
@@ -120,5 +146,5 @@ namespace GoodTimeStudio.MyPhone.OBEX
 public enum BMessageStatus
 {
     UNREAD,
-    READ
+    READ,
 }

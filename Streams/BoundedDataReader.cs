@@ -5,8 +5,8 @@ namespace GoodTimeStudio.MyPhone.OBEX.Streams
 {
     /// <summary>
     /// A data reader with a limit on the number of bytes that can be read.
-    /// 
-    /// A <see cref="DataReaderQuotaExceedException"/> will be thrown if the number of bytes a operation 
+    ///
+    /// A <see cref="DataReaderQuotaExceedException"/> will be thrown if the number of bytes a operation
     /// try to read exceed the limit.
     /// </summary>
     public class BoundedDataReader : IDataReader
@@ -24,7 +24,10 @@ namespace GoodTimeStudio.MyPhone.OBEX.Streams
         {
             if (RemainingQuota < numberOfBytes)
             {
-                throw new BoundedDataReaderQuotaExceedException(RemainingQuota + numberOfBytes, numberOfBytes);
+                throw new BoundedDataReaderQuotaExceedException(
+                    RemainingQuota + numberOfBytes,
+                    numberOfBytes
+                );
             }
             RemainingQuota -= numberOfBytes;
         }
@@ -138,12 +141,24 @@ namespace GoodTimeStudio.MyPhone.OBEX.Streams
             throw new InvalidOperationException("Now allowed");
         }
 
-        public ByteOrder ByteOrder { get => _reader.ByteOrder; set => _reader.ByteOrder = value; }
-        public InputStreamOptions InputStreamOptions { get => _reader.InputStreamOptions; set => throw new InvalidOperationException("Now allowed"); }
+        public ByteOrder ByteOrder
+        {
+            get => _reader.ByteOrder;
+            set => _reader.ByteOrder = value;
+        }
+        public InputStreamOptions InputStreamOptions
+        {
+            get => _reader.InputStreamOptions;
+            set => throw new InvalidOperationException("Now allowed");
+        }
 
         public uint UnconsumedBufferLength => _reader.UnconsumedBufferLength;
 
-        public Windows.Storage.Streams.UnicodeEncoding UnicodeEncoding { get => _reader.UnicodeEncoding; set => _reader.UnicodeEncoding = value; }
+        public Windows.Storage.Streams.UnicodeEncoding UnicodeEncoding
+        {
+            get => _reader.UnicodeEncoding;
+            set => _reader.UnicodeEncoding = value;
+        }
     }
 
     public class BoundedDataReaderQuotaExceedException : Exception
@@ -151,13 +166,16 @@ namespace GoodTimeStudio.MyPhone.OBEX.Streams
         public uint RemainingQuota { get; }
         public uint NumberOfBytesAttemptToRead { get; }
 
-        public BoundedDataReaderQuotaExceedException(uint remainingQuota, uint numberOfBytesAttemptToRead)
-            : base($"Attempt to read {numberOfBytesAttemptToRead} bytes with BoundedDataReader, exceeding the remaining quota ${remainingQuota} bytes.")
+        public BoundedDataReaderQuotaExceedException(
+            uint remainingQuota,
+            uint numberOfBytesAttemptToRead
+        )
+            : base(
+                $"Attempt to read {numberOfBytesAttemptToRead} bytes with BoundedDataReader, exceeding the remaining quota ${remainingQuota} bytes."
+            )
         {
             RemainingQuota = remainingQuota;
             NumberOfBytesAttemptToRead = numberOfBytesAttemptToRead;
         }
-
-
     }
 }

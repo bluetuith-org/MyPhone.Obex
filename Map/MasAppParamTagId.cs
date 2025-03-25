@@ -44,6 +44,6 @@
         ExtendedData,
         MapSupportedFeatures,
         MessageHandle,
-        ModifyText
+        ModifyText,
     }
 }

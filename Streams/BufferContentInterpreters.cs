@@ -16,7 +16,6 @@ namespace GoodTimeStudio.MyPhone.OBEX.Streams
     {
         public int GetValue(ReadOnlySpan<byte> buffer)
         {
-
             return BinaryPrimitives.ReadInt32BigEndian(buffer);
         }
     }

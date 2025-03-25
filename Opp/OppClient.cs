@@ -1,10 +1,10 @@
-﻿using GoodTimeStudio.MyPhone.OBEX.Headers;
-using System;
+﻿using System;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using GoodTimeStudio.MyPhone.OBEX.Headers;
 using Windows.Storage.Streams;
 
 namespace GoodTimeStudio.MyPhone.OBEX.Opp
@@ -23,12 +23,22 @@ namespace GoodTimeStudio.MyPhone.OBEX.Opp
 
         private ushort _clientPacketSize = 256;
 
-        public record TransferEventData(string FileName, long FileSize, long BytesTransferred, bool TransferDone, bool Error);
+        public record TransferEventData(
+            string FileName,
+            long FileSize,
+            long BytesTransferred,
+            bool TransferDone,
+            bool Error
+        );
+
         public EventHandler<TransferEventData>? TransferEventHandler;
 
-        public OppClient(IInputStream inputStream, IOutputStream outputStream, CancellationTokenSource token) : base(inputStream, outputStream, token)
-        {
-        }
+        public OppClient(
+            IInputStream inputStream,
+            IOutputStream outputStream,
+            CancellationTokenSource token
+        )
+            : base(inputStream, outputStream, token) { }
 
         protected override void OnConnected(ObexPacket connectionResponse)
         {
@@ -36,7 +46,9 @@ namespace GoodTimeStudio.MyPhone.OBEX.Opp
 
             _clientPacketSize = Math.Max(
                 _clientPacketSize,
-                (ushort)(((ObexConnectPacket)connectionResponse).MaximumPacketLength - _clientPacketSize)
+                (ushort)(
+                    ((ObexConnectPacket)connectionResponse).MaximumPacketLength - _clientPacketSize
+                )
             );
         }
 
@@ -56,21 +68,42 @@ namespace GoodTimeStudio.MyPhone.OBEX.Opp
 
             FileInfo file = new FileInfo(fileName);
 
-            using (FileStream fileStream = new FileStream(fileName, FileMode.Open, FileAccess.Read, FileShare.Read, _clientPacketSize, true))
+            using (
+                FileStream fileStream = new FileStream(
+                    fileName,
+                    FileMode.Open,
+                    FileAccess.Read,
+                    FileShare.Read,
+                    _clientPacketSize,
+                    true
+                )
+            )
             using (var ms = new MemoryStream(_clientPacketSize))
             {
                 {
                     var filename = Path.GetFileName(file.Name);
                     long numBytes = file.Length;
 
-                    ObexPacket request = new ObexPacket(new ObexOpcode(ObexOperation.Put, false),
+                    ObexPacket request = new ObexPacket(
+                        new ObexOpcode(ObexOperation.Put, false),
                         _connectionIdHeader!,
                         new ObexHeader(HeaderId.Name, filename, true, Encoding.BigEndianUnicode),
                         new ObexHeader(HeaderId.Length, (int)file.Length),
-                        new ObexHeader(HeaderId.Type, MimeTypes.GetMimeType(file.Name), true, Encoding.ASCII)
+                        new ObexHeader(
+                            HeaderId.Type,
+                            MimeTypes.GetMimeType(file.Name),
+                            true,
+                            Encoding.ASCII
+                        )
                     );
 
-                    TransferEventData data = new(filename, file.Length, file.Length - numBytes, false, false);
+                    TransferEventData data = new(
+                        filename,
+                        file.Length,
+                        file.Length - numBytes,
+                        false,
+                        false
+                    );
 
                     ms.SetLength(_clientPacketSize);
 
@@ -83,7 +116,14 @@ namespace GoodTimeStudio.MyPhone.OBEX.Opp
                             await AbortAsync();
 
                             IsConnectionClosed = true;
-                            SendObexTransferEvent(data with { BytesTransferred = file.Length - numBytes, TransferDone = true, Error = true });
+                            SendObexTransferEvent(
+                                data with
+                                {
+                                    BytesTransferred = file.Length - numBytes,
+                                    TransferDone = true,
+                                    Error = true,
+                                }
+                            );
 
                             return false;
                         }
@@ -94,7 +134,10 @@ namespace GoodTimeStudio.MyPhone.OBEX.Opp
                             fileStream.Read(ms.GetBuffer());
 
                             request.Opcode = new ObexOpcode(ObexOperation.Put, true);
-                            request.ReplaceHeader(HeaderId.Body, new ObexHeader(HeaderId.EndOfBody, ms.ToArray()));
+                            request.ReplaceHeader(
+                                HeaderId.Body,
+                                new ObexHeader(HeaderId.EndOfBody, ms.ToArray())
+                            );
                         }
                         else
                         {
@@ -124,16 +167,28 @@ namespace GoodTimeStudio.MyPhone.OBEX.Opp
                                     break;
 
                                 default:
-                                    SendObexTransferEvent(data with { BytesTransferred = file.Length - numBytes, TransferDone = true, Error = true });
-                                    throw new ObexException($"Operation code: {subResponse.Opcode.ObexOperation}");
+                                    SendObexTransferEvent(
+                                        data with
+                                        {
+                                            BytesTransferred = file.Length - numBytes,
+                                            TransferDone = true,
+                                            Error = true,
+                                        }
+                                    );
+                                    throw new ObexException(
+                                        $"Operation code: {subResponse.Opcode.ObexOperation}"
+                                    );
                             }
 
-                            SendObexTransferEvent(data with
-                            {
-                                BytesTransferred = file.Length - numBytes,
-                                TransferDone = subResponse.Opcode.ObexOperation != ObexOperation.Continue,
-                                Error = _cancellationTokenSource.IsCancellationRequested
-                            });
+                            SendObexTransferEvent(
+                                data with
+                                {
+                                    BytesTransferred = file.Length - numBytes,
+                                    TransferDone =
+                                        subResponse.Opcode.ObexOperation != ObexOperation.Continue,
+                                    Error = _cancellationTokenSource.IsCancellationRequested,
+                                }
+                            );
 
                             numBytes -= ms.Length;
                         }
@@ -147,11 +202,10 @@ namespace GoodTimeStudio.MyPhone.OBEX.Opp
                     } while (numBytes > 0);
                 }
 
-            done:
+                done:
                 return true;
             }
         }
-
 
         private void SendObexTransferEvent(TransferEventData eventData)
         {

@@ -7,7 +7,8 @@
     {
         public HeaderId HeaderId { get; }
 
-        public ObexHeaderNotFoundException(HeaderId headerId) : base($"Can not find such header, HeaderId: {headerId} ")
+        public ObexHeaderNotFoundException(HeaderId headerId)
+            : base($"Can not find such header, HeaderId: {headerId} ")
         {
             HeaderId = headerId;
         }
@@ -19,7 +20,9 @@
     public class ObexAppParameterNotFoundException : ObexException
     {
         public byte TagId { get; }
-        public ObexAppParameterNotFoundException(byte tagId) : base($"Can not find such app parameter, TagId: {tagId}")
+
+        public ObexAppParameterNotFoundException(byte tagId)
+            : base($"Can not find such app parameter, TagId: {tagId}")
         {
             TagId = tagId;
         }

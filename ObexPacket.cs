@@ -1,9 +1,9 @@
-﻿using GoodTimeStudio.MyPhone.OBEX.Headers;
-using GoodTimeStudio.MyPhone.OBEX.Streams;
-using GoodTimeStudio.MyPhone.OBEX.Utilities;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using GoodTimeStudio.MyPhone.OBEX.Headers;
+using GoodTimeStudio.MyPhone.OBEX.Streams;
+using GoodTimeStudio.MyPhone.OBEX.Utilities;
 using Windows.Storage.Streams;
 
 namespace GoodTimeStudio.MyPhone.OBEX
@@ -26,7 +26,8 @@ namespace GoodTimeStudio.MyPhone.OBEX
         }
         private byte[]? _bodyBuffer;
 
-        public ObexPacket() : this(new ObexOpcode(ObexOperation.Abort, true)) { }
+        public ObexPacket()
+            : this(new ObexOpcode(ObexOperation.Abort, true)) { }
 
         public ObexPacket(ObexOpcode op)
         {
@@ -34,7 +35,8 @@ namespace GoodTimeStudio.MyPhone.OBEX
             Headers = new Dictionary<HeaderId, ObexHeader>();
         }
 
-        public ObexPacket(ObexOpcode op, params ObexHeader[] headers) : this(op)
+        public ObexPacket(ObexOpcode op, params ObexHeader[] headers)
+            : this(op)
         {
             foreach (ObexHeader h in headers)
             {
@@ -75,12 +77,16 @@ namespace GoodTimeStudio.MyPhone.OBEX
 
         public string GetBodyContentAsUtf8String(bool stringIsNullTerminated)
         {
-            return GetBodyContent(new StringInterpreter(System.Text.Encoding.UTF8, stringIsNullTerminated));
+            return GetBodyContent(
+                new StringInterpreter(System.Text.Encoding.UTF8, stringIsNullTerminated)
+            );
         }
 
         public string GetBodyContentAsUnicodeString(bool stringIsNullTerminated)
         {
-            return GetBodyContent(new StringInterpreter(System.Text.Encoding.BigEndianUnicode, stringIsNullTerminated));
+            return GetBodyContent(
+                new StringInterpreter(System.Text.Encoding.BigEndianUnicode, stringIsNullTerminated)
+            );
         }
 
         protected virtual void WriteExtraField(DataWriter writer) { }
@@ -110,7 +116,9 @@ namespace GoodTimeStudio.MyPhone.OBEX
                 IBuffer exFieldAndHeaderBuffer = exFieldAndHeaderWriter.DetachBuffer();
 
                 writer.WriteByte(Opcode.Value);
-                PacketLength = (ushort)(exFieldAndHeaderBuffer.Length + sizeof(ObexOperation) + sizeof(ushort));
+                PacketLength = (ushort)(
+                    exFieldAndHeaderBuffer.Length + sizeof(ObexOperation) + sizeof(ushort)
+                );
                 writer.WriteUInt16(PacketLength);
                 writer.WriteBuffer(exFieldAndHeaderBuffer);
 
@@ -131,7 +139,9 @@ namespace GoodTimeStudio.MyPhone.OBEX
                 uint loaded = await reader.LoadAsync(headerSize);
                 if (loaded == 0)
                 {
-                    throw new ObexException("The underlying socket was closed before we were able to read the whole data.");
+                    throw new ObexException(
+                        "The underlying socket was closed before we were able to read the whole data."
+                    );
                 }
                 sizeToRead -= loaded;
             }
@@ -154,12 +164,15 @@ namespace GoodTimeStudio.MyPhone.OBEX
         /// <param name="reader"></param>
         /// <param name="packet">Optional, if this parameter is not null, the data will be read into this parameter</param>
         /// <returns>Loaded OBEX packet</returns>
-        public async static Task<T> ReadFromStream<T>(DataReader reader) where T : ObexPacket, new()
+        public async static Task<T> ReadFromStream<T>(DataReader reader)
+            where T : ObexPacket, new()
         {
             uint loaded = await reader.LoadAsync(1);
             if (loaded != 1)
             {
-                throw new ObexException("The underlying socket was closed before we were able to read the whole data.");
+                throw new ObexException(
+                    "The underlying socket was closed before we were able to read the whole data."
+                );
             }
 
             ObexOpcode opcode = new(reader.ReadByte());
@@ -169,31 +182,40 @@ namespace GoodTimeStudio.MyPhone.OBEX
             loaded = await reader.LoadAsync(sizeof(ushort));
             if (loaded != sizeof(ushort))
             {
-                throw new ObexException("The underlying socket was closed before we were able to read the whole data.");
+                throw new ObexException(
+                    "The underlying socket was closed before we were able to read the whole data."
+                );
             }
 
             packet.PacketLength = reader.ReadUInt16();
 
             uint extraFieldBits = await packet.ReadExtraField(reader);
-            uint size = packet.PacketLength - (uint)sizeof(ObexOperation) - sizeof(ushort) - extraFieldBits;
+            uint size =
+                packet.PacketLength - (uint)sizeof(ObexOperation) - sizeof(ushort) - extraFieldBits;
             await packet.ParseHeader(reader, size);
             return packet;
         }
 
         public override bool Equals(object? obj)
         {
-            return obj is ObexPacket packet &&
-                   EqualityComparer<ObexOpcode>.Default.Equals(Opcode, packet.Opcode) &&
-                   PacketLength == packet.PacketLength &&
-                   DictionaryEqualityComparer<HeaderId, ObexHeader>.Default.Equals(Headers, packet.Headers);
+            return obj is ObexPacket packet
+                && EqualityComparer<ObexOpcode>.Default.Equals(Opcode, packet.Opcode)
+                && PacketLength == packet.PacketLength
+                && DictionaryEqualityComparer<HeaderId, ObexHeader>.Default.Equals(
+                    Headers,
+                    packet.Headers
+                );
         }
 
         public override int GetHashCode()
         {
             int hashCode = 467068145;
-            hashCode = hashCode * -1521134295 + EqualityComparer<ObexOpcode>.Default.GetHashCode(Opcode);
+            hashCode =
+                hashCode * -1521134295 + EqualityComparer<ObexOpcode>.Default.GetHashCode(Opcode);
             hashCode = hashCode * -1521134295 + PacketLength.GetHashCode();
-            hashCode = hashCode * -1521134295 + EqualityComparer<Dictionary<HeaderId, ObexHeader>>.Default.GetHashCode(Headers);
+            hashCode =
+                hashCode * -1521134295
+                + EqualityComparer<Dictionary<HeaderId, ObexHeader>>.Default.GetHashCode(Headers);
             return hashCode;
         }
     }

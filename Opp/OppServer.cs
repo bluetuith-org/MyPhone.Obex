@@ -23,13 +23,15 @@ namespace GoodTimeStudio.MyPhone.OBEX.Opp
             public bool TransferDone;
             public bool Error;
         };
+
         public EventHandler<ReceiveTransferEventData>? ReceiveTransferEventHandler;
 
         public OppServer(
             StreamSocket socket,
             CancellationTokenSource token,
             string destinationDirectory = ""
-          ) : base(socket.InputStream, socket.OutputStream, ObexServiceUuid.ObjectPush, token)
+        )
+            : base(socket.InputStream, socket.OutputStream, ObexServiceUuid.ObjectPush, token)
         {
             _socket = socket;
             _transfercts = CancellationTokenSource.CreateLinkedTokenSource(token.Token);
@@ -94,14 +96,18 @@ namespace GoodTimeStudio.MyPhone.OBEX.Opp
                     {
                         case ObexOperation.Put:
                             if (!packet.Opcode.IsFinalBitSet)
-                                sendPacket = new ObexPacket(new ObexOpcode(ObexOperation.Continue, true));
+                                sendPacket = new ObexPacket(
+                                    new ObexOpcode(ObexOperation.Continue, true)
+                                );
 
                             _writer.WriteBuffer(sendPacket.ToBuffer());
                             await _writer.StoreAsync();
 
                             var packetInfo = GetPacketInfo(packet);
                             var (pFileName, pFileSize, pBufferLength) = (
-                                packetInfo.FileName, packetInfo.FileSize, packetInfo.buffer.Length
+                                packetInfo.FileName,
+                                packetInfo.FileSize,
+                                packetInfo.buffer.Length
                             );
                             if (pFileName != "")
                                 data.FileName = packetInfo.FileName;
@@ -137,7 +143,7 @@ namespace GoodTimeStudio.MyPhone.OBEX.Opp
                 }
             }
 
-        deleteFile:
+            deleteFile:
             fileDeleted = true;
             DeleteTempFile(data.TempFileName);
             if (!string.IsNullOrEmpty(data.TempFileName))
@@ -147,7 +153,7 @@ namespace GoodTimeStudio.MyPhone.OBEX.Opp
                 SendObexReceiveEvent(data);
             }
 
-        finishTransfer:
+            finishTransfer:
             if (exception != null)
                 throw exception;
 
@@ -181,12 +187,14 @@ namespace GoodTimeStudio.MyPhone.OBEX.Opp
             );
 
             var (src, dest) = (tempFile, Path.Join(dir, actualFile));
-            
+
             var file = new FileInfo(src);
             file.MoveTo(dest);
         }
 
-        private static (string FileName, int FileSize, bool IsFinal, byte[] buffer) GetPacketInfo(ObexPacket packet)
+        private static (string FileName, int FileSize, bool IsFinal, byte[] buffer) GetPacketInfo(
+            ObexPacket packet
+        )
         {
             HeaderId headerId;
             var actualFileName = "";
