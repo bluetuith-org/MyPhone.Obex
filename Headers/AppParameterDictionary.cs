@@ -2,7 +2,7 @@
 
 namespace GoodTimeStudio.MyPhone.OBEX.Headers
 {
-    public class AppParameterDictionary : Dictionary<byte, AppParameter>
+    public partial class AppParameterDictionary : Dictionary<byte, AppParameter>
     {
         public new AppParameter this[byte key]
         {

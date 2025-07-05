@@ -11,7 +11,7 @@ using Windows.Networking.Sockets;
 
 namespace GoodTimeStudio.MyPhone.OBEX.Pbap
 {
-    public class BluetoothPbapClientSession : BluetoothObexClientSession<PbapClient>
+    public partial class BluetoothPbapClientSession : BluetoothObexClientSession<PbapClient>
     {
         public static readonly Guid PHONE_BOOK_ACCESS_ID = new Guid(
             "0000112f-0000-1000-8000-00805f9b34fb"

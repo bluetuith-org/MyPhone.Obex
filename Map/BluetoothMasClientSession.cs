@@ -10,7 +10,7 @@ using Windows.Networking.Sockets;
 
 namespace GoodTimeStudio.MyPhone.OBEX.Map
 {
-    public class BluetoothMasClientSession : BluetoothObexClientSession<MasClient>
+    public partial class BluetoothMasClientSession : BluetoothObexClientSession<MasClient>
     {
         public static readonly Guid MAP_Id = new Guid("00001132-0000-1000-8000-00805f9b34fb");
 

@@ -9,7 +9,7 @@ namespace GoodTimeStudio.MyPhone.OBEX.Streams
     /// A <see cref="DataReaderQuotaExceedException"/> will be thrown if the number of bytes a operation
     /// try to read exceed the limit.
     /// </summary>
-    public class BoundedDataReader : IDataReader
+    public partial class BoundedDataReader : IDataReader
     {
         private IDataReader _reader;
         public uint RemainingQuota;

@@ -68,7 +68,7 @@ namespace GoodTimeStudio.MyPhone.OBEX.Map
             );
         }
 
-        protected override void WriteExtraField(DataWriter writer)
+        protected override void WriteExtraField(IDataWriter writer)
         {
             switch (SetPathMode)
             {
