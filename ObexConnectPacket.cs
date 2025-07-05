@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers.Binary;
 using System.Threading.Tasks;
 using GoodTimeStudio.MyPhone.OBEX.Headers;
 using Windows.Storage.Streams;
@@ -34,11 +35,17 @@ namespace GoodTimeStudio.MyPhone.OBEX
             Headers[HeaderId.Target] = new ObexHeader(HeaderId.Target, targetService.Value);
         }
 
-        protected override void WriteExtraField(DataWriter writer)
+        private byte[] _extra = null!;
+
+        protected override byte[] GetExtraField()
         {
-            writer.WriteByte(OBEXVersion);
-            writer.WriteByte(Flags);
-            writer.WriteUInt16(MaximumPacketLength);
+            if (_extra != null)
+                return _extra;
+
+            _extra = [OBEXVersion, Flags, 0, 0];
+            BinaryPrimitives.WriteUInt16BigEndian(_extra.AsSpan(2), MaximumPacketLength);
+
+            return _extra;
         }
 
         protected override async Task<uint> ReadExtraField(DataReader reader)

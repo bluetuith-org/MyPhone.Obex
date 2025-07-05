@@ -1,10 +1,20 @@
 ﻿using System;
+using System.Buffers.Binary;
 using System.Collections.Generic;
+using System.IO;
+using System.Reflection.Emit;
+using System.Runtime.CompilerServices;
+using System.Text;
 using System.Threading.Tasks;
+using GoodTimeStudio.MyPhone.OBEX;
 using GoodTimeStudio.MyPhone.OBEX.Headers;
 using GoodTimeStudio.MyPhone.OBEX.Streams;
 using GoodTimeStudio.MyPhone.OBEX.Utilities;
+using MixERP.Net.VCards.Types;
+using Windows.Foundation;
 using Windows.Storage.Streams;
+using Windows.System.UserProfile;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace GoodTimeStudio.MyPhone.OBEX
 {
@@ -56,74 +66,62 @@ namespace GoodTimeStudio.MyPhone.OBEX
             }
         }
 
-        public void AddHeader(ObexHeader header)
-        {
-            Headers.Add(header.HeaderId, header);
-        }
+        public void AddHeader(ObexHeader header) => Headers.Add(header.HeaderId, header);
 
         public void ReplaceHeader(HeaderId oldHeaderId, ObexHeader newHeader)
         {
-            if (newHeader == null)
-                throw new ArgumentNullException(nameof(newHeader));
+            ArgumentNullException.ThrowIfNull(newHeader);
 
             Headers.Remove(oldHeaderId);
             Headers.Add(newHeader.HeaderId, newHeader);
         }
 
-        public T GetBodyContent<T>(IBufferContentInterpreter<T> interpreter)
-        {
-            return interpreter.GetValue(BodyBuffer);
-        }
+        public T GetBodyContent<T>(IBufferContentInterpreter<T> interpreter) =>
+            interpreter.GetValue(BodyBuffer);
 
-        public string GetBodyContentAsUtf8String(bool stringIsNullTerminated)
-        {
-            return GetBodyContent(
+        public string GetBodyContentAsUtf8String(bool stringIsNullTerminated) =>
+            GetBodyContent(
                 new StringInterpreter(System.Text.Encoding.UTF8, stringIsNullTerminated)
             );
-        }
 
-        public string GetBodyContentAsUnicodeString(bool stringIsNullTerminated)
-        {
-            return GetBodyContent(
+        public string GetBodyContentAsUnicodeString(bool stringIsNullTerminated) =>
+            GetBodyContent(
                 new StringInterpreter(System.Text.Encoding.BigEndianUnicode, stringIsNullTerminated)
             );
-        }
 
-        protected virtual void WriteExtraField(DataWriter writer) { }
+        protected virtual byte[] GetExtraField()
+        {
+            return null!;
+        }
 
         /// <summary>
         /// Read extra field after the length field
         /// </summary>
         /// <param name="reader"></param>
         /// <returns>The number of bits required for extra bits</returns>
-        protected virtual Task<uint> ReadExtraField(DataReader reader)
+        protected virtual Task<uint> ReadExtraField(DataReader reader) => Task.FromResult<uint>(0);
+
+        public void WriteToStream(IDataWriter writer)
         {
-            return Task.FromResult<uint>(0);
-        }
+            ushort len = (sizeof(ObexOperation) + sizeof(ushort));
 
-        public IBuffer ToBuffer()
-        {
-            using (DataWriter writer = new DataWriter())
-            using (DataWriter exFieldAndHeaderWriter = new DataWriter())
-            {
-                WriteExtraField(exFieldAndHeaderWriter);
+            var extra = GetExtraField();
+            if (extra != null)
+                len += (ushort)extra.Length;
 
-                foreach (ObexHeader header in Headers.Values)
-                {
-                    header.WriteToStream(exFieldAndHeaderWriter);
-                }
+            foreach (ObexHeader header in Headers.Values)
+                len += (ushort)header.GetVariableLength();
 
-                IBuffer exFieldAndHeaderBuffer = exFieldAndHeaderWriter.DetachBuffer();
+            PacketLength = len;
 
-                writer.WriteByte(Opcode.Value);
-                PacketLength = (ushort)(
-                    exFieldAndHeaderBuffer.Length + sizeof(ObexOperation) + sizeof(ushort)
-                );
-                writer.WriteUInt16(PacketLength);
-                writer.WriteBuffer(exFieldAndHeaderBuffer);
+            writer.WriteByte(Opcode.Value);
+            writer.WriteUInt16(len);
 
-                return writer.DetachBuffer();
-            }
+            if (extra != null)
+                writer.WriteBytes(extra);
+
+            foreach (ObexHeader header in Headers.Values)
+                header.WriteToStream(writer);
         }
 
         private async Task ParseHeader(DataReader reader, uint headerSize)
@@ -153,10 +151,8 @@ namespace GoodTimeStudio.MyPhone.OBEX
             }
         }
 
-        public static Task<ObexPacket> ReadFromStream(DataReader reader)
-        {
-            return ReadFromStream<ObexPacket>(reader);
-        }
+        public static Task<ObexPacket> ReadFromStream(DataReader reader) =>
+            ReadFromStream<ObexPacket>(reader);
 
         /// <summary>
         /// Read and parse OBEX packet from DataReader
@@ -196,16 +192,14 @@ namespace GoodTimeStudio.MyPhone.OBEX
             return packet;
         }
 
-        public override bool Equals(object? obj)
-        {
-            return obj is ObexPacket packet
-                && EqualityComparer<ObexOpcode>.Default.Equals(Opcode, packet.Opcode)
-                && PacketLength == packet.PacketLength
-                && DictionaryEqualityComparer<HeaderId, ObexHeader>.Default.Equals(
-                    Headers,
-                    packet.Headers
-                );
-        }
+        public override bool Equals(object? obj) =>
+            obj is ObexPacket packet
+            && EqualityComparer<ObexOpcode>.Default.Equals(Opcode, packet.Opcode)
+            && PacketLength == packet.PacketLength
+            && DictionaryEqualityComparer<HeaderId, ObexHeader>.Default.Equals(
+                Headers,
+                packet.Headers
+            );
 
         public override int GetHashCode()
         {

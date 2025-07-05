@@ -88,18 +88,35 @@ namespace GoodTimeStudio.MyPhone.OBEX.Headers
             return GetValue<AppParameterHeaderInterpreter, AppParameterDictionary>();
         }
 
-        public void WriteToStream(IDataWriter writer)
+        private int GetLengthOrWrite(IDataWriter writer, bool write)
         {
-            writer.WriteByte((byte)HeaderId);
+            var len = 1 + Buffer.Length;
+            bool writeTotalLength = false;
+
             switch (Encoding)
             {
                 case ObexHeaderEncoding.UnicodeString:
                 case ObexHeaderEncoding.ByteSequence:
-                    writer.WriteUInt16(HeaderTotalLength);
+                    len += sizeof(ushort);
+                    writeTotalLength = true;
+
                     break;
             }
-            writer.WriteBytes(Buffer);
+
+            if (write)
+            {
+                writer.WriteByte((byte)HeaderId);
+                if (writeTotalLength)
+                    writer.WriteUInt16(HeaderTotalLength);
+                writer.WriteBytes(Buffer);
+            }
+
+            return len;
         }
+
+        public void WriteToStream(IDataWriter writer) => GetLengthOrWrite(writer, true);
+
+        public int GetVariableLength() => GetLengthOrWrite(null!, false);
 
         public static ObexHeader ReadFromStream(IDataReader reader)
         {

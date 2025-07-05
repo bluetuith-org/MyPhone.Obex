@@ -158,7 +158,10 @@ namespace GoodTimeStudio.MyPhone.OBEX.Bluetooth
             {
                 return;
             }
-            T obexServer = CreateObexServer(args.Socket, _cts);
+            T obexServer = CreateObexServer(
+                args.Socket,
+                CancellationTokenSource.CreateLinkedTokenSource(_cts.Token)
+            );
             BluetoothClientInformation clientInformation = new(
                 args.Socket.Information.RemoteAddress,
                 args.Socket.Information.RemoteServiceName
@@ -176,24 +179,28 @@ namespace GoodTimeStudio.MyPhone.OBEX.Bluetooth
 
         private async Task RunObexServer(T obexSerber, BluetoothClientInformation clientInformation)
         {
+            ObexException exception = null;
+
             try
             {
                 await obexSerber.Run();
             }
             catch (ObexException ex)
             {
+                exception = ex;
                 obexSerber.StopServer();
+            }
+            finally
+            {
                 ClientDisconnected?.Invoke(
                     this,
                     new BluetoothObexServerSessionClientDisconnectedEventArgs<T>(
                         clientInformation,
                         obexSerber,
-                        ex
+                        exception
                     )
                 );
-            }
-            finally
-            {
+
                 _connections.Remove(clientInformation);
             }
         }

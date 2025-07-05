@@ -42,26 +42,32 @@ namespace GoodTimeStudio.MyPhone.OBEX
                 );
             }
 
-            ObexConnectPacket packet = new ObexConnectPacket(targetService);
-            var buf = packet.ToBuffer();
-
-            _writer.WriteBuffer(buf);
-            await _writer.StoreAsync();
-
-            ObexConnectPacket response = await ObexPacket.ReadFromStream<ObexConnectPacket>(
-                _reader
-            );
-
-            if (response.Opcode.ObexOperation != ObexOperation.Success)
+            try
             {
-                throw new ObexRequestException(
-                    response.Opcode,
-                    $"Unable to connect to the target OBEX service."
-                );
-            }
+                ObexConnectPacket packet = new ObexConnectPacket(targetService);
+                packet.WriteToStream(_writer);
+                await _writer.StoreAsync();
 
-            Conntected = true;
-            OnConnected(response);
+                ObexConnectPacket response = await ObexPacket.ReadFromStream<ObexConnectPacket>(
+                    _reader
+                );
+
+                if (response.Opcode.ObexOperation != ObexOperation.Success)
+                {
+                    throw new ObexRequestException(
+                        response.Opcode,
+                        $"Unable to connect to the target OBEX service."
+                    );
+                }
+
+                Conntected = true;
+                OnConnected(response);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                throw;
+            }
         }
 
         protected virtual void OnConnected(ObexPacket connectionResponse) { }
@@ -82,7 +88,7 @@ namespace GoodTimeStudio.MyPhone.OBEX
                 await _cancellationTokenSource.CancelAsync();
 
             var request = new ObexPacket(new ObexOpcode(ObexOperation.Abort, true));
-            _writer?.WriteBuffer(request.ToBuffer());
+            request.WriteToStream(_writer);
             await _writer?.StoreAsync();
         }
 
@@ -122,8 +128,7 @@ namespace GoodTimeStudio.MyPhone.OBEX
                         return null;
                     }
 
-                    var buf = req.ToBuffer();
-                    _writer.WriteBuffer(buf);
+                    req.WriteToStream(_writer);
                     await _writer.StoreAsync();
 
                     ObexPacket subResponse;

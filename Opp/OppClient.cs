@@ -1,6 +1,5 @@
 ﻿using System;
 using System.IO;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -19,17 +18,19 @@ namespace GoodTimeStudio.MyPhone.OBEX.Opp
         /// </remarks>
         private ObexHeader? _connectionIdHeader;
 
-        private bool IsConnectionClosed = false;
-
         private ushort _clientPacketSize = 256;
 
-        public record TransferEventData(
-            string FileName,
-            long FileSize,
-            long BytesTransferred,
-            bool TransferDone,
-            bool Error
-        );
+        public record class TransferEventData
+        {
+            public string Name { get; set; }
+            public string FileName { get; set; }
+            public long FileSize { get; set; }
+            public long BytesTransferred { get; set; }
+            public bool TransferDone { get; set; }
+            public bool Error { get; set; }
+
+            public bool SessionDone { get; set; }
+        }
 
         public EventHandler<TransferEventData>? TransferEventHandler;
 
@@ -62,148 +63,116 @@ namespace GoodTimeStudio.MyPhone.OBEX.Opp
             _cancellationTokenSource = new CancellationTokenSource();
         }
 
-        public async Task<bool> SendFile(string fileName)
+        public async Task SendFile(string fileName)
         {
             _cancellationTokenSource.Token.ThrowIfCancellationRequested();
 
-            FileInfo file = new FileInfo(fileName);
+            var file = new FileInfo(fileName);
+            var filename = Path.GetFileName(file.Name);
 
-            using (
-                FileStream fileStream = new FileStream(
-                    fileName,
-                    FileMode.Open,
-                    FileAccess.Read,
-                    FileShare.Read,
-                    _clientPacketSize,
-                    true
-                )
-            )
-            using (var ms = new MemoryStream(_clientPacketSize))
+            using FileStream fileStream = new(
+                fileName,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.Read,
+                _clientPacketSize,
+                true
+            );
+
+            var buffer = new byte[_clientPacketSize];
+            var bodyHeader = new ObexHeader(HeaderId.Body, buffer);
+            var eobHeader = new ObexHeader(HeaderId.EndOfBody, buffer);
+
+            var data = new TransferEventData()
             {
+                Name = filename,
+                FileName = fileName,
+                FileSize = file.Length,
+            };
+
+            var request = new ObexPacket(
+                new ObexOpcode(ObexOperation.Put, false),
+                _connectionIdHeader!,
+                new ObexHeader(HeaderId.Name, filename, true, Encoding.BigEndianUnicode),
+                new ObexHeader(HeaderId.Length, (int)file.Length),
+                new ObexHeader(
+                    HeaderId.Type,
+                    MimeTypes.GetMimeType(file.Name),
+                    true,
+                    Encoding.ASCII
+                ),
+                bodyHeader
+            );
+
+            var completed = false;
+            var packetModified = false;
+            var firstPut = true;
+
+            try
+            {
+                int bytesRead = 0;
+                int totalRead = 0;
+
+                while ((bytesRead = fileStream.Read(buffer, 0, _clientPacketSize)) > 0)
                 {
-                    var filename = Path.GetFileName(file.Name);
-                    long numBytes = file.Length;
+                    totalRead += bytesRead;
 
-                    ObexPacket request = new ObexPacket(
-                        new ObexOpcode(ObexOperation.Put, false),
-                        _connectionIdHeader!,
-                        new ObexHeader(HeaderId.Name, filename, true, Encoding.BigEndianUnicode),
-                        new ObexHeader(HeaderId.Length, (int)file.Length),
-                        new ObexHeader(
-                            HeaderId.Type,
-                            MimeTypes.GetMimeType(file.Name),
-                            true,
-                            Encoding.ASCII
-                        )
-                    );
-
-                    TransferEventData data = new(
-                        filename,
-                        file.Length,
-                        file.Length - numBytes,
-                        false,
-                        false
-                    );
-
-                    ms.SetLength(_clientPacketSize);
-
-                    do
+                    if (totalRead > 0 && !firstPut && !packetModified)
                     {
-                        ms.Position = 0;
+                        request = new ObexPacket(
+                            new ObexOpcode(ObexOperation.Put, false),
+                            bodyHeader
+                        );
 
-                        if (_cancellationTokenSource.IsCancellationRequested)
-                        {
-                            await AbortAsync();
+                        data.Name = data.FileName = "";
+                        packetModified = true;
+                    }
 
-                            IsConnectionClosed = true;
-                            SendObexTransferEvent(
-                                data with
-                                {
-                                    BytesTransferred = file.Length - numBytes,
-                                    TransferDone = true,
-                                    Error = true,
-                                }
+                    if (_cancellationTokenSource.IsCancellationRequested)
+                    {
+                        await AbortAsync();
+
+                        return;
+                    }
+
+                    if (bytesRead != _clientPacketSize && totalRead == file.Length)
+                    {
+                        eobHeader.Buffer = buffer[..bytesRead];
+
+                        request.Opcode = new ObexOpcode(ObexOperation.Put, true);
+                        request.ReplaceHeader(HeaderId.Body, eobHeader);
+                    }
+
+                    request.WriteToStream(_writer);
+                    await _writer.StoreAsync();
+
+                    var subResponse = await ObexPacket.ReadFromStream(_reader);
+                    switch (subResponse.Opcode.ObexOperation)
+                    {
+                        case ObexOperation.Success:
+                            completed = true;
+                            break;
+
+                        case ObexOperation.Continue:
+                            break;
+
+                        default:
+                            throw new ObexException(
+                                $"Operation code: {subResponse.Opcode.ObexOperation}"
                             );
+                    }
 
-                            return false;
-                        }
+                    data.BytesTransferred = totalRead;
+                    SendObexTransferEvent(data);
 
-                        if (numBytes <= (_clientPacketSize))
-                        {
-                            ms.SetLength(numBytes);
-                            fileStream.Read(ms.GetBuffer());
-
-                            request.Opcode = new ObexOpcode(ObexOperation.Put, true);
-                            request.ReplaceHeader(
-                                HeaderId.Body,
-                                new ObexHeader(HeaderId.EndOfBody, ms.ToArray())
-                            );
-                        }
-                        else
-                        {
-                            fileStream.Read(ms.GetBuffer());
-
-                            if (request.Headers.TryGetValue(HeaderId.Body, out var header))
-                                header.Buffer = ms.ToArray();
-                            else
-                                request.AddHeader(new ObexHeader(HeaderId.Body, ms.ToArray()));
-                        }
-
-                        try
-                        {
-                            var buf = request.ToBuffer();
-                            _writer.WriteBuffer(buf);
-                            await _writer.StoreAsync();
-
-                            ObexPacket subResponse;
-                            subResponse = await ObexPacket.ReadFromStream(_reader);
-
-                            switch (subResponse.Opcode.ObexOperation)
-                            {
-                                case ObexOperation.Success:
-                                    goto done;
-
-                                case ObexOperation.Continue:
-                                    break;
-
-                                default:
-                                    SendObexTransferEvent(
-                                        data with
-                                        {
-                                            BytesTransferred = file.Length - numBytes,
-                                            TransferDone = true,
-                                            Error = true,
-                                        }
-                                    );
-                                    throw new ObexException(
-                                        $"Operation code: {subResponse.Opcode.ObexOperation}"
-                                    );
-                            }
-
-                            SendObexTransferEvent(
-                                data with
-                                {
-                                    BytesTransferred = file.Length - numBytes,
-                                    TransferDone =
-                                        subResponse.Opcode.ObexOperation != ObexOperation.Continue,
-                                    Error = _cancellationTokenSource.IsCancellationRequested,
-                                }
-                            );
-
-                            numBytes -= ms.Length;
-                        }
-                        catch (Exception ex)
-                        {
-                            if (ex is COMException com && (uint)com.HResult == 0x800703E3)
-                                return false;
-                            else
-                                throw;
-                        }
-                    } while (numBytes > 0);
+                    firstPut = false;
                 }
-
-                done:
-                return true;
+            }
+            finally
+            {
+                data.Error = !completed;
+                data.TransferDone = true;
+                SendObexTransferEvent(data);
             }
         }
 

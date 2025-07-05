@@ -6,7 +6,7 @@ using Windows.Networking.Sockets;
 
 namespace GoodTimeStudio.MyPhone.OBEX.Opp
 {
-    public class BluetoothOppClientSession : BluetoothObexClientSession<OppClient>
+    public partial class BluetoothOppClientSession : BluetoothObexClientSession<OppClient>
     {
         public static readonly Guid OPP_ID = new Guid("00001105-0000-1000-8000-00805F9B34FB");
 

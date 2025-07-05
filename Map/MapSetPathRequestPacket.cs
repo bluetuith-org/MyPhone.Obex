@@ -68,19 +68,23 @@ namespace GoodTimeStudio.MyPhone.OBEX.Map
             );
         }
 
-        protected override void WriteExtraField(IDataWriter writer)
+        private readonly byte[] _extra = new byte[2];
+
+        protected override byte[] GetExtraField()
         {
             switch (SetPathMode)
             {
                 case SetPathMode.BackToRoot:
                 case SetPathMode.EnterFolder:
-                    writer.WriteByte(0x40); // 0100 0000
+                    _extra[0] = (0x40); // 0100 0000
                     break;
                 case SetPathMode.BackToParent:
-                    writer.WriteByte(0xC0); // 1100 0000
+                    _extra[0] = (0xC0); // 1100 0000
                     break;
             }
-            writer.WriteByte(0); // Reserved Constants field
+            _extra[1] = (0); // Reserved Constants field
+
+            return _extra;
         }
 
         protected override async Task<uint> ReadExtraField(DataReader reader)

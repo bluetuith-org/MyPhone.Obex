@@ -44,7 +44,7 @@ namespace GoodTimeStudio.MyPhone.OBEX
                         if (Enumerable.SequenceEqual(header.Buffer.ToArray(), _serviceUuid.Value))
                         {
                             packet.Opcode = new ObexOpcode(ObexOperation.Success, true);
-                            _writer.WriteBuffer(packet.ToBuffer());
+                            packet.WriteToStream(_writer);
                             await _writer.StoreAsync();
                             break;
                         }
@@ -52,7 +52,7 @@ namespace GoodTimeStudio.MyPhone.OBEX
                 }
 
                 packet = new ObexPacket(new ObexOpcode(ObexOperation.ServiceUnavailable, true));
-                _writer.WriteBuffer(packet.ToBuffer());
+                packet.WriteToStream(_writer);
             }
 
             while (true)
@@ -64,7 +64,7 @@ namespace GoodTimeStudio.MyPhone.OBEX
                 ObexPacket? response = OnClientRequest(packet);
                 if (response != null)
                 {
-                    _writer.WriteBuffer(response.ToBuffer());
+                    response.WriteToStream(_writer);
                     await _writer.StoreAsync();
                 }
                 else
