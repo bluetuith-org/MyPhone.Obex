@@ -2,21 +2,21 @@
 using System.Buffers.Binary;
 using GoodTimeStudio.MyPhone.OBEX.Streams;
 
-namespace GoodTimeStudio.MyPhone.OBEX.Headers
+namespace GoodTimeStudio.MyPhone.OBEX.Headers;
+
+public class AppParameterHeaderInterpreter : IBufferContentInterpreter<AppParameterDictionary>
 {
-    public class AppParameterHeaderInterpreter : IBufferContentInterpreter<AppParameterDictionary>
+    public AppParameterDictionary GetValue(ReadOnlySpan<byte> buffer)
     {
-        public AppParameterDictionary GetValue(ReadOnlySpan<byte> buffer)
+        AppParameterDictionary dict = new();
+        for (var i = 0; i < buffer.Length; )
         {
-            AppParameterDictionary dict = new();
-            for (int i = 0; i < buffer.Length; )
-            {
-                byte tagId = buffer[i++];
-                byte len = BinaryPrimitives.ReverseEndianness(buffer[i++]);
-                dict[tagId] = new AppParameter(tagId, buffer.Slice(i, len).ToArray());
-                i += len;
-            }
-            return dict;
+            var tagId = buffer[i++];
+            var len = BinaryPrimitives.ReverseEndianness(buffer[i++]);
+            dict[tagId] = new AppParameter(tagId, buffer.Slice(i, len).ToArray());
+            i += len;
         }
+
+        return dict;
     }
 }

@@ -1,33 +1,37 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-	<PropertyGroup>
-		<TargetFrameworks>net10.0-windows10.0.19041.0</TargetFrameworks>
-		<LangVersion>13</LangVersion>
-		<Nullable>enable</Nullable>
-		<RootNamespace>GoodTimeStudio.MyPhone.OBEX</RootNamespace>
-		<CSharpier_Check>false</CSharpier_Check>
-		<CsWinRTWindowsMetadata>10.0.19041.0</CsWinRTWindowsMetadata>
-		<CsWinRTAotWarningLevel>2</CsWinRTAotWarningLevel>
-		<CsWinRTAotOptimizerEnabled>True</CsWinRTAotOptimizerEnabled>
-		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-	</PropertyGroup>
+    <PropertyGroup>
+        <TargetFrameworks>net10.0-windows10.0.19041.0</TargetFrameworks>
+        <LangVersion>13</LangVersion>
+        <Nullable>enable</Nullable>
+        <RootNamespace>GoodTimeStudio.MyPhone.OBEX</RootNamespace>
+        <CSharpier_Check>false</CSharpier_Check>
+        <CsWinRTWindowsMetadata>10.0.19041.0</CsWinRTWindowsMetadata>
+        <CsWinRTAotWarningLevel>2</CsWinRTAotWarningLevel>
+        <CsWinRTAotOptimizerEnabled>True</CsWinRTAotOptimizerEnabled>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    </PropertyGroup>
 
-	<ItemGroup>
-		<None Include="..\.editorconfig" Link=".editorconfig" />
-	</ItemGroup>
+    <ItemGroup>
+        <None Include="..\.editorconfig" Link=".editorconfig"/>
+    </ItemGroup>
 
-	<ItemGroup>
-		<PackageReference Include="CSharpier.MsBuild" Version="0.30.6">
-		  <PrivateAssets>all</PrivateAssets>
-		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-		</PackageReference>
-		<PackageReference Include="Microsoft.Windows.CsWinRT" Version="2.2.0" />
-		<PackageReference Include="MimeTypes" Version="2.5.2">
-			<PrivateAssets>all</PrivateAssets>
-			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-		</PackageReference>
-		<PackageReference Include="NightOwl.MixERP.Net.VCards" Version="1.0.1" />
-		<PackageReference Condition="'$(TargetFramework)' == 'netstandard2.0'" Include="System.Runtime.InteropServices.WindowsRuntime" Version="4.3.0" />
-	</ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="CSharpier.MsBuild" Version="0.30.6">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="Microsoft.Windows.CsWin32" Version="0.3.183">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="Microsoft.Windows.CsWinRT" Version="2.2.0"/>
+        <PackageReference Include="MimeTypes" Version="2.5.2">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="NightOwl.MixERP.Net.VCards" Version="1.0.1"/>
+        <PackageReference Condition="'$(TargetFramework)' == 'netstandard2.0'" Include="System.Runtime.InteropServices.WindowsRuntime" Version="4.3.0"/>
+    </ItemGroup>
 
 </Project>

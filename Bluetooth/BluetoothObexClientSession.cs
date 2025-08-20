@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -12,191 +11,162 @@ using Windows.Devices.Enumeration;
 using Windows.Networking.Sockets;
 using Windows.Storage.Streams;
 
-namespace GoodTimeStudio.MyPhone.OBEX.Bluetooth
+namespace GoodTimeStudio.MyPhone.OBEX.Bluetooth;
+
+public abstract class BluetoothObexClientSession<T> : IDisposable
+    where T : ObexClient
 {
-    public abstract class BluetoothObexClientSession<T> : IDisposable
-        where T : ObexClient
+    private readonly CancellationTokenSource _cts;
+
+    private RfcommDeviceService? _service;
+    private StreamSocket? _socket;
+
+    public BluetoothObexClientSession(
+        BluetoothDevice bluetoothDevice,
+        Guid rfcommServiceUuid,
+        ObexServiceUuid targetObexService,
+        CancellationTokenSource token
+    )
     {
-        public T? ObexClient { get; set; }
+        ServiceUuid = rfcommServiceUuid;
+        TargetObexService = targetObexService;
+        Device = bluetoothDevice;
+        _cts = token;
+    }
 
-        public Guid ServiceUuid { get; set; }
+    public T? ObexClient { get; set; }
 
-        public ObexServiceUuid TargetObexService { get; set; }
+    public Guid ServiceUuid { get; set; }
 
-        public bool Connected
-        {
-            get => _socket != null;
-        }
+    public ObexServiceUuid TargetObexService { get; set; }
 
-        public BluetoothDevice Device { get; }
+    public bool Connected => _socket != null;
 
-        /// <summary>
-        /// Raw SDP records of the RFComm service. Not null after calling <see cref="ConnectAsync"/>
-        /// </summary>
-        public IReadOnlyDictionary<uint, IReadOnlyCollection<byte>>? SdpRecords
-        {
-            get;
-            private set;
-        }
+    public BluetoothDevice Device { get; }
 
-        private RfcommDeviceService? _service;
-        private StreamSocket? _socket;
+    /// <summary>
+    ///     Raw SDP records of the RFComm service. Not null after calling <see cref="ConnectAsync" />
+    /// </summary>
+    public IReadOnlyDictionary<uint, IReadOnlyCollection<byte>>? SdpRecords { get; private set; }
 
-        private CancellationTokenSource _cts;
+    public virtual void Dispose()
+    {
+        if (!_cts.IsCancellationRequested)
+            _cts.Cancel();
+        if (_socket != null)
+            _socket.Dispose();
+        if (_service != null)
+            _service.Dispose();
+    }
 
-        public BluetoothObexClientSession(
-            BluetoothDevice bluetoothDevice,
-            Guid rfcommServiceUuid,
-            ObexServiceUuid targetObexService,
-            CancellationTokenSource token
-        )
-        {
-            ServiceUuid = rfcommServiceUuid;
-            TargetObexService = targetObexService;
-            Device = bluetoothDevice;
-            _cts = token;
-        }
+    /// <summary>
+    ///     Establish bluetooth Rfcomm socket channel, and then initialize a ObexClient based on this socket.
+    /// </summary>
+    /// <exception cref="BluetoothObexSessionException">Failed to establish a bluetooth Rfcomm socket channel</exception>
+    public async Task ConnectAsync()
+    {
+        _cts.Token.ThrowIfCancellationRequested();
+        var result = await Device.GetRfcommServicesAsync(BluetoothCacheMode.Uncached);
 
-        /// <summary>
-        /// Establish bluetooth Rfcomm socket channel, and then initialize a ObexClient based on this socket.
-        /// </summary>
-        /// <exception cref="BluetoothObexSessionException">Failed to establish a bluetooth Rfcomm socket channel</exception>
-        public async Task ConnectAsync()
-        {
-            _cts.Token.ThrowIfCancellationRequested();
-            RfcommDeviceServicesResult result = await Device.GetRfcommServicesAsync(
-                BluetoothCacheMode.Uncached
+        if (result.Error != BluetoothError.Success)
+            throw new BluetoothObexSessionException(
+                $"BluetoothError: {result.Error}",
+                bluetoothError: result.Error
             );
 
-            if (result.Error != BluetoothError.Success)
-            {
-                throw new BluetoothObexSessionException(
-                    $"BluetoothError: {result.Error}",
-                    bluetoothError: result.Error
-                );
-            }
+        if (result.Services.Count <= 0)
+            // TODO: improve remote device offline detection (maybe BLE?)
+            throw new BluetoothDeviceNotAvailableException(
+                "Unable to connect to the remote Bluetooth device."
+            );
+        var service = result
+            .Services.Where(rfs => rfs.ServiceId.Uuid == ServiceUuid)
+            .FirstOrDefault();
+        if (service == null)
+            throw new BluetoothServiceNotSupportedException(
+                $"The remote bluetooth device does not support service: {ServiceUuid}"
+            );
+        _service = service;
+        var accessStatus = await _service.RequestAccessAsync();
+        if (accessStatus != DeviceAccessStatus.Allowed)
+            throw new BluetoothObexSessionException(
+                $"The operating system does not allowed us to access this Rfcomm service. Reason: {accessStatus}"
+            );
+        var sdpRecords = new Dictionary<uint, IReadOnlyCollection<byte>>();
+        foreach (KeyValuePair<uint, IBuffer> pair in await _service.GetSdpRawAttributesAsync())
+            sdpRecords[pair.Key] = pair.Value.ToArray();
+        SdpRecords = sdpRecords;
+        if (!CheckFeaturesRequirementBySdpRecords())
+            throw new BluetoothServiceNotSupportedException(
+                $"The remote bluetooth device provided the required servic: {ServiceUuid}, but it does not meet the feature requirements."
+            );
 
-            if (result.Services.Count <= 0)
-            {
-                // TODO: improve remote device offline detection (maybe BLE?)
-                throw new BluetoothDeviceNotAvailableException(
-                    "Unable to connect to the remote Bluetooth device."
-                );
-            }
-            RfcommDeviceService? service = result
-                .Services.Where(rfs => rfs.ServiceId.Uuid == ServiceUuid)
-                .FirstOrDefault();
-            if (service == null)
-            {
-                throw new BluetoothServiceNotSupportedException(
-                    $"The remote bluetooth device does not support service: {ServiceUuid}"
-                );
-            }
-            _service = service;
-            DeviceAccessStatus accessStatus = await _service.RequestAccessAsync();
-            if (accessStatus != DeviceAccessStatus.Allowed)
-            {
-                throw new BluetoothObexSessionException(
-                    $"The operating system does not allowed us to access this Rfcomm service. Reason: {accessStatus}"
-                );
-            }
-            var sdpRecords = new Dictionary<uint, IReadOnlyCollection<byte>>();
-            foreach (KeyValuePair<uint, IBuffer> pair in await _service.GetSdpRawAttributesAsync())
-            {
-                sdpRecords[pair.Key] = pair.Value.ToArray();
-            }
-            SdpRecords = sdpRecords;
-            if (!CheckFeaturesRequirementBySdpRecords())
-            {
-                throw new BluetoothServiceNotSupportedException(
-                    $"The remote bluetooth device provided the required servic: {ServiceUuid}, but it does not meet the feature requirements."
-                );
-            }
-
-            _cts.Token.ThrowIfCancellationRequested();
-            StreamSocket socket = new StreamSocket();
-            try
-            {
-                await socket.ConnectAsync(
-                    _service.ConnectionHostName,
-                    _service.ConnectionServiceName,
-                    SocketProtectionLevel.BluetoothEncryptionAllowNullAuthentication
-                );
-            }
-            catch (Exception ex)
-            {
-                socket.Dispose();
-
-                SocketErrorStatus error = SocketError.GetStatus(ex.HResult);
-                if (error != SocketErrorStatus.Unknown)
-                {
-                    throw new BluetoothObexSessionException(
-                        $"Unable to connect to the remote RFCOMM service. Reason: {error}",
-                        socketError: error
-                    );
-                }
-                else
-                {
-                    throw;
-                }
-            }
-
-            _cts.Token.ThrowIfCancellationRequested();
-            ObexClient = CreateObexClient(socket, _cts);
-            try
-            {
-                await ObexClient.ConnectAsync(TargetObexService);
-            }
-            catch (ObexRequestException ex)
-            {
-                socket.Dispose();
-                if (ex.Opcode.ObexOperation == ObexOperation.Unauthorized)
-                {
-                    throw new BluetoothObexSessionException(
-                        $"Connected to OBEX server successfully, but the server refuse to provide service. Reason: You are not an authorized user.",
-                        innerException: ex
-                    );
-                }
-                throw new BluetoothObexSessionException(
-                    $"Connected to OBEX server successfully, but the server refuse to provide service. Reason: Got an unsuccessful response from server ({ex.Opcode})",
-                    innerException: ex
-                );
-            }
-            _socket = socket;
-        }
-
-        /// <summary>
-        /// Create a new ObexClient instance.
-        /// </summary>
-        /// <param name="socket">Stream socket</param>
-        /// <returns>ObexClient</returns>
-        public abstract T CreateObexClient(StreamSocket socket, CancellationTokenSource token);
-
-        /// <summary>
-        /// Checking agasint SDP records of the RFComm service to test whether it provides necessary features.
-        /// </summary>
-        /// <remarks>You can assume <see cref="SdpRecords"/> is not null.</remarks>
-        /// <returns>
-        /// True if all features requirement (if any) are met.
-        /// Otherwise false, and then the connection request will be aborted (a <see cref="BluetoothServiceNotSupportedException"/> will be thrown).
-        /// </returns>
-        protected virtual bool CheckFeaturesRequirementBySdpRecords()
+        _cts.Token.ThrowIfCancellationRequested();
+        var socket = new StreamSocket();
+        try
         {
-            Debug.Assert(SdpRecords != null);
-            return true;
+            await socket.ConnectAsync(
+                _service.ConnectionHostName,
+                _service.ConnectionServiceName,
+                SocketProtectionLevel.BluetoothEncryptionAllowNullAuthentication
+            );
+        }
+        catch (Exception ex)
+        {
+            socket.Dispose();
+
+            var error = SocketError.GetStatus(ex.HResult);
+            if (error != SocketErrorStatus.Unknown)
+                throw new BluetoothObexSessionException(
+                    $"Unable to connect to the remote RFCOMM service. Reason: {error}",
+                    socketError: error
+                );
+
+            throw;
         }
 
-        public virtual void Dispose()
+        _cts.Token.ThrowIfCancellationRequested();
+        ObexClient = CreateObexClient(socket, _cts);
+        try
         {
-            _cts.Cancel();
-            if (_socket != null)
-            {
-                _socket.Dispose();
-            }
-            if (_service != null)
-            {
-                _service.Dispose();
-            }
+            await ObexClient.ConnectAsync(TargetObexService);
         }
+        catch (ObexRequestException ex)
+        {
+            socket.Dispose();
+            if (ex.Opcode.ObexOperation == ObexOperation.Unauthorized)
+                throw new BluetoothObexSessionException(
+                    "Connected to OBEX server successfully, but the server refuse to provide service. Reason: You are not an authorized user.",
+                    ex
+                );
+            throw new BluetoothObexSessionException(
+                $"Connected to OBEX server successfully, but the server refuse to provide service. Reason: Got an unsuccessful response from server ({ex.Opcode})",
+                ex
+            );
+        }
+
+        _socket = socket;
+    }
+
+    /// <summary>
+    ///     Create a new ObexClient instance.
+    /// </summary>
+    /// <param name="socket">Stream socket</param>
+    /// <returns>ObexClient</returns>
+    public abstract T CreateObexClient(StreamSocket socket, CancellationTokenSource token);
+
+    /// <summary>
+    ///     Checking agasint SDP records of the RFComm service to test whether it provides necessary features.
+    /// </summary>
+    /// <remarks>You can assume <see cref="SdpRecords" /> is not null.</remarks>
+    /// <returns>
+    ///     True if all features requirement (if any) are met.
+    ///     Otherwise false, and then the connection request will be aborted (a
+    ///     <see cref="BluetoothServiceNotSupportedException" /> will be thrown).
+    /// </returns>
+    protected virtual bool CheckFeaturesRequirementBySdpRecords()
+    {
+        Debug.Assert(SdpRecords != null);
+        return true;
     }
 }

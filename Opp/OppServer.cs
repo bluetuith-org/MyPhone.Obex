@@ -4,286 +4,277 @@ using System.Threading;
 using System.Threading.Tasks;
 using Windows.Networking.Sockets;
 
-namespace GoodTimeStudio.MyPhone.OBEX.Opp
+namespace GoodTimeStudio.MyPhone.OBEX.Opp;
+
+public class OppServer : ObexServer
 {
-    public class OppServer : ObexServer
+    private readonly StreamSocket _socket;
+
+    private readonly Func<ReceiveTransferEventData, bool> _authFunc = delegate
     {
-        private readonly StreamSocket _socket;
-        private readonly CancellationTokenSource _transfercts;
+        return true;
+    };
 
-        private readonly string destinationDirectory = "";
-        private readonly Func<ReceiveTransferEventData, bool> authFunc = delegate
-        {
-            return true;
-        };
+    private readonly string _destinationDirectory = "";
 
-        public record class ReceiveTransferEventData
-        {
-            public string HostName = "";
-            public string FileName = "";
-            public string FilePath = "";
-            public string TempFileName = "";
-            public long FileSize;
-            public long BytesTransferred;
-            public bool Queued;
-            public bool TransferDone;
-            public bool Error;
-            public bool SessionClosed;
-        };
+    public EventHandler<ReceiveTransferEventData> ReceiveTransferEventHandler;
 
-        public EventHandler<ReceiveTransferEventData> ReceiveTransferEventHandler;
-
-        public OppServer(
-            StreamSocket socket,
-            CancellationTokenSource token,
-            string directory,
-            Func<ReceiveTransferEventData, bool> authHandler
+    public OppServer(
+        StreamSocket socket,
+        CancellationTokenSource token,
+        string directory,
+        Func<ReceiveTransferEventData, bool> authHandler
+    )
+        : base(socket.InputStream, socket.OutputStream, ObexServiceUuid.ObjectPush, token)
+    {
+        if (
+            !string.IsNullOrEmpty(_destinationDirectory) && !Directory.Exists(_destinationDirectory)
         )
-            : base(socket.InputStream, socket.OutputStream, ObexServiceUuid.ObjectPush, token)
+            throw new DirectoryNotFoundException(_destinationDirectory);
+
+        _socket = socket;
+        Cts = token;
+        _destinationDirectory = directory;
+        _authFunc = authHandler;
+    }
+
+    public override void CancelTransfer()
+    {
+        Cts.Cancel();
+    }
+
+    public override async Task Run()
+    {
+        listenForConnections:
+        Cts.Token.ThrowIfCancellationRequested();
+
+        ObexPacket packet = await ObexPacket.ReadFromStream<ObexConnectPacket>(Reader);
+        switch (packet.Opcode.ObexOperation)
         {
-            _socket = socket;
-            _transfercts = token;
-            destinationDirectory = directory;
-            authFunc = authHandler;
+            case ObexOperation.Connect:
+                packet.Opcode = new ObexOpcode(ObexOperation.Success, true);
+                packet.WriteToStream(Writer);
+                await Writer.StoreAsync();
+                break;
+            default:
+                packet = new ObexPacket(new ObexOpcode(ObexOperation.ServiceUnavailable, true));
+                packet.WriteToStream(Writer);
+                goto listenForConnections;
         }
 
-        public override void CancelTransfer()
+        Cts.Token.ThrowIfCancellationRequested();
+
+        ReceiveTransferEventData data = new();
+
+        FileStream file = null;
+        var filename = "";
+        var tempFileName = "";
+
+        var firstPut = true;
+        var finalPut = false;
+        var aborted = false;
+        var disconnected = false;
+
+        var exception = false;
+
+        try
         {
-            _transfercts.Cancel();
-        }
-
-        public override async Task Run()
-        {
-            listenForConnections:
-            _transfercts.Token.ThrowIfCancellationRequested();
-
-            ObexPacket packet = await ObexPacket.ReadFromStream<ObexConnectPacket>(_reader);
-            switch (packet.Opcode.ObexOperation)
+            while (!disconnected && !aborted && !Cts.Token.IsCancellationRequested)
             {
-                case ObexOperation.Connect:
-                    packet.Opcode = new ObexOpcode(ObexOperation.Success, true);
-                    packet.WriteToStream(_writer);
-                    await _writer.StoreAsync();
-                    break;
-                default:
-                    packet = new ObexPacket(new ObexOpcode(ObexOperation.ServiceUnavailable, true));
-                    packet.WriteToStream(_writer);
-                    goto listenForConnections;
-            }
-
-            _transfercts.Token.ThrowIfCancellationRequested();
-
-            ReceiveTransferEventData data = new();
-
-            FileStream file = null;
-            var filename = "";
-
-            var firstPut = true;
-            var finalPut = false;
-            var aborted = false;
-            var disconnected = false;
-
-            var exception = false;
-
-            try
-            {
-                while (!disconnected || aborted || !_transfercts.Token.IsCancellationRequested)
+                if (finalPut && file != null)
                 {
-                    if (finalPut && file != null)
-                    {
-                        var src = file.Name;
-                        file.Dispose();
+                    var src = file.Name;
+                    await file.DisposeAsync();
 
-                        MoveFile(src, data.FilePath);
-                        file = null;
-                    }
+                    MoveFile(src, data.FilePath);
 
-                    var sendPacket = new ObexPacket(new ObexOpcode(ObexOperation.Success, true));
+                    data.TransferDone = true;
+                    SendObexReceiveEvent(data);
 
-                    packet = await ObexPacket.ReadFromStream(_reader);
-                    switch (packet.Opcode.ObexOperation)
-                    {
-                        case ObexOperation.Put:
-                            if (finalPut)
-                                data = new();
+                    file = null!;
+                }
 
-                            if (data.HostName == "")
-                                data.HostName = _socket.Information.RemoteHostName.RawName;
+                file ??= File.OpenWrite(Path.GetTempFileName());
+                tempFileName = file.Name;
 
-                            var (FileName, FileSize, IsFinal, buffer) = GetPacketInfo(
-                                packet,
-                                firstPut
+                var sendPacket = new ObexPacket(new ObexOpcode(ObexOperation.Success, true));
+
+                packet = await ObexPacket.ReadFromStream(Reader);
+                switch (packet.Opcode.ObexOperation)
+                {
+                    case ObexOperation.Put:
+                        if (finalPut)
+                            data = new ReceiveTransferEventData();
+
+                        if (data.HostName == "")
+                            data.HostName = _socket.Information.RemoteHostName.RawName;
+
+                        var (fileName, fileSize, isFinal, buffer) = GetPacketInfo(packet, firstPut);
+                        if (fileSize > 0)
+                            data.FileSize = fileSize;
+                        if (!string.IsNullOrEmpty(fileName))
+                            filename = fileName;
+                        if (string.IsNullOrEmpty(data.FilePath) && !string.IsNullOrEmpty(filename))
+                            data.FilePath = string.IsNullOrEmpty(_destinationDirectory)
+                                ? Path.Combine(Path.GetDirectoryName(file.Name)!, filename)
+                                : Path.Combine(_destinationDirectory, filename);
+
+                        if (firstPut)
+                        {
+                            SendObexReceiveEvent(data with { FileName = filename, Queued = true });
+                            if (!_authFunc(data))
+                            {
+                                CancelTransfer();
+                                return;
+                            }
+                        }
+
+                        firstPut = false;
+                        finalPut = isFinal;
+                        if (!packet.Opcode.IsFinalBitSet)
+                            sendPacket = new ObexPacket(
+                                new ObexOpcode(ObexOperation.Continue, true)
                             );
-                            data.FileName = FileName;
-                            if (FileSize > 0)
-                                data.FileSize = FileSize;
-                            if (FileName != "")
-                                filename = FileName;
 
-                            if (firstPut)
-                            {
-                                SendObexReceiveEvent(data with { Queued = true });
-                                if (!authFunc(data))
-                                {
-                                    CancelTransfer();
-                                    return;
-                                }
-                            }
+                        file.Write(buffer);
 
-                            firstPut = false;
-                            finalPut = IsFinal;
-                            if (!packet.Opcode.IsFinalBitSet)
-                                sendPacket = new ObexPacket(
-                                    new ObexOpcode(ObexOperation.Continue, true)
-                                );
+                        sendPacket.WriteToStream(Writer);
+                        await Writer.StoreAsync();
+                        data.BytesTransferred += buffer.Length;
 
-                            file ??= File.OpenWrite(Path.GetTempFileName());
-                            file.Write(buffer);
-
-                            sendPacket.WriteToStream(_writer);
-                            await _writer.StoreAsync();
-
-                            data.BytesTransferred += buffer.Length;
-                            if (!string.IsNullOrEmpty(data.TempFileName))
-                                data.TempFileName = file.Name;
-
-                            if (finalPut)
-                            {
-                                data.TransferDone = true;
-                                data.FilePath =
-                                    (
-                                        string.IsNullOrEmpty(destinationDirectory)
-                                        || string.IsNullOrWhiteSpace(destinationDirectory)
-                                        || string.IsNullOrEmpty(filename)
-                                    )
-                                        ? data.TempFileName
-                                        : Path.Combine(
-                                            Path.GetDirectoryName(destinationDirectory)!,
-                                            filename
-                                        );
-                            }
-
-                            SendObexReceiveEvent(data);
-
+                        if (finalPut)
+                        {
+                            data.TransferDone = true;
                             continue;
+                        }
 
-                        case ObexOperation.Abort:
-                        case ObexOperation.Disconnect:
-                            disconnected = packet.Opcode.ObexOperation == ObexOperation.Disconnect;
-                            aborted = packet.Opcode.ObexOperation == ObexOperation.Abort;
+                        SendObexReceiveEvent(data);
 
-                            sendPacket.WriteToStream(_writer);
-                            await _writer.StoreAsync();
+                        continue;
 
-                            return;
+                    case ObexOperation.Abort:
+                    case ObexOperation.Disconnect:
+                        disconnected = packet.Opcode.ObexOperation == ObexOperation.Disconnect;
+                        aborted = packet.Opcode.ObexOperation == ObexOperation.Abort;
 
-                        default:
-                            throw new ObexException(
-                                $"Got unexpected operation code during transfer: {packet.Opcode.ObexOperation}"
-                            );
-                    }
+                        sendPacket.WriteToStream(Writer);
+                        await Writer.StoreAsync();
+
+                        return;
+
+                    default:
+                        throw new ObexException(
+                            $"Got unexpected operation code during transfer: {packet.Opcode.ObexOperation}"
+                        );
                 }
             }
-            catch (Exception ex)
+        }
+        catch (Exception ex)
+        {
+            exception = true;
+            throw new ObexException(ex.Message);
+        }
+        finally
+        {
+            data.SessionClosed = true;
+            if ((!disconnected && exception) || Cts.IsCancellationRequested || aborted)
             {
-                exception = true;
-                throw new ObexException(ex.Message);
-            }
-            finally
-            {
-                data.SessionClosed = true;
-                if ((!disconnected && exception) || _transfercts.IsCancellationRequested || aborted)
-                {
-                    data.Error = true;
-                    data.TransferDone = false;
-                }
-
+                data.Error = true;
+                data.TransferDone = false;
                 SendObexReceiveEvent(data);
-
-                try
-                {
-                    if (_transfercts.IsCancellationRequested && !exception)
-                    {
-                        DeleteTempFile(data.TempFileName);
-
-                        packet.Opcode = new ObexOpcode(ObexOperation.Abort, true);
-                        packet.WriteToStream(_writer);
-                        await _writer.StoreAsync();
-                    }
-
-                    _socket?.Dispose();
-                    file?.Dispose();
-                }
-                catch { }
             }
-        }
-
-        private static void DeleteTempFile(string file)
-        {
-            if (string.IsNullOrEmpty(file))
-                return;
-
-            if (File.Exists(file))
-                File.Delete(file);
-        }
-
-        private static void MoveFile(string src, string dest)
-        {
-            if (string.IsNullOrEmpty(src) || string.IsNullOrEmpty(dest) || src == dest)
-                return;
 
             try
             {
-                new FileInfo(src).MoveTo(dest);
+                if (Cts.IsCancellationRequested && !exception)
+                {
+                    packet.Opcode = new ObexOpcode(ObexOperation.Abort, true);
+                    packet.WriteToStream(Writer);
+                    await Writer.StoreAsync();
+                }
+
+                _socket?.Dispose();
+                file?.Dispose();
+                DeleteTempFile(tempFileName);
             }
             catch { }
         }
+    }
 
-        private static (string FileName, int FileSize, bool IsFinal, byte[] buffer) GetPacketInfo(
-            ObexPacket packet,
-            bool isFirstPut
-        )
+    private static void DeleteTempFile(string file)
+    {
+        if (string.IsNullOrEmpty(file))
+            return;
+
+        if (File.Exists(file))
+            File.Delete(file);
+    }
+
+    private static void MoveFile(string src, string dest)
+    {
+        if (string.IsNullOrEmpty(src) || string.IsNullOrEmpty(dest) || src == dest)
+            return;
+
+        new FileInfo(src).MoveTo(dest);
+    }
+
+    private static (string FileName, int FileSize, bool IsFinal, byte[] buffer) GetPacketInfo(
+        ObexPacket packet,
+        bool isFirstPut
+    )
+    {
+        HeaderId headerId;
+        var actualFileName = "";
+        var fileSize = 0;
+
+        if (packet.Opcode.IsFinalBitSet)
+            headerId = HeaderId.EndOfBody;
+        else
+            headerId = HeaderId.Body;
+
+        if (packet.Headers.TryGetValue(HeaderId.Name, out var nameHeader))
+            actualFileName = nameHeader.GetValueAsUnicodeString(true);
+
+        if (packet.Headers.TryGetValue(HeaderId.Length, out var lengthHeader))
+            fileSize = lengthHeader.GetValueAsInt32();
+
+        if (isFirstPut)
         {
-            HeaderId headerId;
-            var actualFileName = "";
-            int fileSize = 0;
-
-            if (packet.Opcode.IsFinalBitSet)
-                headerId = HeaderId.EndOfBody;
-            else
-                headerId = HeaderId.Body;
-
-            if (packet.Headers.TryGetValue(HeaderId.Name, out var nameHeader))
-                actualFileName = nameHeader.GetValueAsUnicodeString(true);
-
-            if (packet.Headers.TryGetValue(HeaderId.Length, out var lengthHeader))
-                fileSize = lengthHeader.GetValueAsInt32();
-
-            if (isFirstPut)
-            {
-                if (string.IsNullOrEmpty(actualFileName) || fileSize <= 0)
-                    throw new Exception(
-                        "Invalid first packet from remote device. Filename is empty and/or file size is zero."
-                    );
-
-                actualFileName = string.Concat(
-                    Path.GetFileNameWithoutExtension(actualFileName),
-                    string.Format("{0:yyyy-MM-dd_HH-mm-ss}", DateTime.Now),
-                    Path.GetExtension(actualFileName)
+            if (string.IsNullOrEmpty(actualFileName) || fileSize <= 0)
+                throw new Exception(
+                    "Invalid first packet from remote device. Filename is empty and/or file size is zero."
                 );
-            }
 
-            return (
-                actualFileName,
-                fileSize,
-                packet.Opcode.IsFinalBitSet,
-                packet.GetHeader(headerId).Buffer
+            actualFileName = string.Concat(
+                Path.GetFileNameWithoutExtension(actualFileName),
+                $"{DateTime.Now:yyyy-MM-dd_HH-mm-ss}",
+                Path.GetExtension(actualFileName)
             );
         }
 
-        private void SendObexReceiveEvent(ReceiveTransferEventData eventData)
-        {
-            ReceiveTransferEventHandler?.Invoke(this, eventData);
-        }
+        return (
+            actualFileName,
+            fileSize,
+            packet.Opcode.IsFinalBitSet,
+            packet.GetHeader(headerId).Buffer
+        );
+    }
+
+    private void SendObexReceiveEvent(ReceiveTransferEventData eventData)
+    {
+        ReceiveTransferEventHandler?.Invoke(this, eventData);
+    }
+
+    public record ReceiveTransferEventData
+    {
+        public long BytesTransferred;
+        public bool Error;
+        public string FileName = "";
+        public string FilePath = "";
+        public long FileSize;
+        public string HostName = "";
+        public bool Queued;
+        public bool SessionClosed;
+        public bool TransferDone;
     }
 }

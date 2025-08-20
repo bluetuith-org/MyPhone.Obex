@@ -2,32 +2,30 @@
 using System.Collections.Generic;
 using System.IO;
 
-namespace GoodTimeStudio.MyPhone.OBEX.Headers
+namespace GoodTimeStudio.MyPhone.OBEX.Headers;
+
+public class AppParameterHeaderBuilder
 {
-    public class AppParameterHeaderBuilder
+    public AppParameterHeaderBuilder(params AppParameter[] appParameters)
     {
-        public List<AppParameter> AppParameters { get; }
+        AppParameters = new List<AppParameter>();
+        AppParameters.AddRange(appParameters);
+    }
 
-        public AppParameterHeaderBuilder(params AppParameter[] appParameters)
+    public List<AppParameter> AppParameters { get; }
+
+    public ObexHeader Build()
+    {
+        using var memoryStream = new MemoryStream();
+        using var writer = new BinaryWriter(memoryStream);
+        foreach (var appParam in AppParameters)
         {
-            AppParameters = new List<AppParameter>();
-            AppParameters.AddRange(appParameters);
+            writer.Write(appParam.TagId);
+            writer.Write(BinaryPrimitives.ReverseEndianness(appParam.ContentLength));
+            writer.Write(appParam.Buffer);
         }
 
-        public ObexHeader Build()
-        {
-            using (MemoryStream memoryStream = new MemoryStream())
-            using (BinaryWriter writer = new BinaryWriter(memoryStream))
-            {
-                foreach (AppParameter appParam in AppParameters)
-                {
-                    writer.Write(appParam.TagId);
-                    writer.Write(BinaryPrimitives.ReverseEndianness(appParam.ContentLength));
-                    writer.Write(appParam.Buffer);
-                }
-                writer.Flush();
-                return new ObexHeader(HeaderId.ApplicationParameters, memoryStream.ToArray());
-            }
-        }
+        writer.Flush();
+        return new ObexHeader(HeaderId.ApplicationParameters, memoryStream.ToArray());
     }
 }

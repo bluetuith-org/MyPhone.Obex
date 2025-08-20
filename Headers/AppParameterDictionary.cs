@@ -1,23 +1,18 @@
 ﻿using System.Collections.Generic;
 
-namespace GoodTimeStudio.MyPhone.OBEX.Headers
+namespace GoodTimeStudio.MyPhone.OBEX.Headers;
+
+public partial class AppParameterDictionary : Dictionary<byte, AppParameter>
 {
-    public partial class AppParameterDictionary : Dictionary<byte, AppParameter>
+    public new AppParameter this[byte key]
     {
-        public new AppParameter this[byte key]
+        get
         {
-            get
-            {
-                if (TryGetValue(key, out var value))
-                {
-                    return value;
-                }
-                else
-                {
-                    throw new ObexAppParameterNotFoundException(key);
-                }
-            }
-            set { base[key] = value; }
+            if (TryGetValue(key, out var value))
+                return value;
+
+            throw new ObexAppParameterNotFoundException(key);
         }
+        set => base[key] = value;
     }
 }

@@ -3,77 +3,65 @@ using GoodTimeStudio.MyPhone.OBEX.Extensions;
 using GoodTimeStudio.MyPhone.OBEX.Streams;
 using GoodTimeStudio.MyPhone.OBEX.Utilities;
 
-namespace GoodTimeStudio.MyPhone.OBEX.Headers
+namespace GoodTimeStudio.MyPhone.OBEX.Headers;
+
+public class AppParameter
 {
-    public class AppParameter
+    public AppParameter(byte tagId, byte[] buf)
     {
-        public byte TagId { get; set; }
+        if (buf.Length + 2 * sizeof(byte) > byte.MaxValue)
+            throw new InvalidOperationException("Content buffer size too large. Max 126 bytes.");
 
-        public byte ContentLength
-        {
-            get => (byte)Buffer.Length;
-        }
+        TagId = tagId;
+        Buffer = buf ?? throw new ArgumentNullException(nameof(buf));
+    }
 
-        public byte TotalLength
-        {
-            get => (byte)(ContentLength + 2 * sizeof(byte));
-        }
+    public AppParameter(byte tagId, byte b)
+        : this(tagId, b.ToBigEndianBytes()) { }
 
-        public byte[] Buffer { get; }
+    public AppParameter(byte tagId, ushort value)
+        : this(tagId, value.ToBigEndianBytes()) { }
 
-        public AppParameter(byte tagId, byte[] buf)
-        {
-            if (buf.Length + 2 * sizeof(byte) > byte.MaxValue)
-            {
-                throw new InvalidOperationException(
-                    "Content buffer size too large. Max 126 bytes."
-                );
-            }
+    public AppParameter(byte tagId, int value)
+        : this(tagId, value.ToBigEndianBytes()) { }
 
-            TagId = tagId;
-            Buffer = buf ?? throw new ArgumentNullException(nameof(buf));
-        }
+    public byte TagId { get; set; }
 
-        public AppParameter(byte tagId, byte b)
-            : this(tagId, b.ToBigEndianBytes()) { }
+    public byte ContentLength => (byte)Buffer.Length;
 
-        public AppParameter(byte tagId, ushort value)
-            : this(tagId, value.ToBigEndianBytes()) { }
+    public byte TotalLength => (byte)(ContentLength + 2 * sizeof(byte));
 
-        public AppParameter(byte tagId, int value)
-            : this(tagId, value.ToBigEndianBytes()) { }
+    public byte[] Buffer { get; }
 
-        public R GetValue<I, R>()
-            where I : IBufferContentInterpreter<R>, new()
-        {
-            I interpreter = new I();
-            return GetValue(interpreter);
-        }
+    public TR GetValue<TI, TR>()
+        where TI : IBufferContentInterpreter<TR>, new()
+    {
+        var interpreter = new TI();
+        return GetValue(interpreter);
+    }
 
-        public T GetValue<T>(IBufferContentInterpreter<T> interpreter)
-        {
-            return interpreter.GetValue(Buffer);
-        }
+    public T GetValue<T>(IBufferContentInterpreter<T> interpreter)
+    {
+        return interpreter.GetValue(Buffer);
+    }
 
-        public ushort GetValueAsUInt16()
-        {
-            return GetValue<UInt16Interpreter, ushort>();
-        }
+    public ushort GetValueAsUInt16()
+    {
+        return GetValue<UInt16Interpreter, ushort>();
+    }
 
-        public override bool Equals(object? obj)
-        {
-            return obj is AppParameter parameter
-                && TagId == parameter.TagId
-                && ByteArrayEqualityComparer.Default.Equals(Buffer, parameter.Buffer);
-        }
+    public override bool Equals(object? obj)
+    {
+        return obj is AppParameter parameter
+            && TagId == parameter.TagId
+            && ByteArrayEqualityComparer.Default.Equals(Buffer, parameter.Buffer);
+    }
 
-        public override int GetHashCode()
-        {
-            int hashCode = -913184727;
-            hashCode = hashCode * -1521134295 + TagId.GetHashCode();
-            hashCode =
-                hashCode * -1521134295 + ByteArrayEqualityComparer.Default.GetHashCode(Buffer);
-            return hashCode;
-        }
+    public override int GetHashCode()
+    {
+        var hashCode = -913184727;
+        hashCode = hashCode * -1521134295 + TagId.GetHashCode();
+        hashCode = hashCode * -1521134295 + ByteArrayEqualityComparer.Default.GetHashCode(Buffer);
+        return hashCode;
     }
 }

@@ -1,101 +1,93 @@
 ﻿using System;
 using System.Linq;
-using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading;
 using System.Threading.Tasks;
-using GoodTimeStudio.MyPhone.OBEX.Headers;
 using Windows.Storage.Streams;
 
-namespace GoodTimeStudio.MyPhone.OBEX
+namespace GoodTimeStudio.MyPhone.OBEX;
+
+public class ObexServer
 {
-    public class ObexServer
+    protected CancellationTokenSource Cts;
+    protected readonly DataReader Reader;
+
+    private readonly ObexServiceUuid _serviceUuid;
+    protected readonly DataWriter Writer;
+
+    public ObexServer(
+        IInputStream inputStream,
+        IOutputStream outputStream,
+        ObexServiceUuid serviceUuid,
+        CancellationTokenSource token
+    )
     {
-        protected DataReader _reader;
-        protected DataWriter _writer;
+        Reader = new DataReader(inputStream);
+        Writer = new DataWriter(outputStream);
+        _serviceUuid = serviceUuid;
+        Cts = token;
+    }
 
-        protected ObexServiceUuid _serviceUuid;
-
-        protected CancellationTokenSource _cts;
-
-        public ObexServer(
-            IInputStream inputStream,
-            IOutputStream outputStream,
-            ObexServiceUuid serviceUuid,
-            CancellationTokenSource token
-        )
+    public virtual async Task Run()
+    {
+        while (true)
         {
-            _reader = new DataReader(inputStream);
-            _writer = new DataWriter(outputStream);
-            _serviceUuid = serviceUuid;
-            _cts = token;
-        }
+            Cts.Token.ThrowIfCancellationRequested();
 
-        public virtual async Task Run()
-        {
-            while (true)
-            {
-                _cts.Token.ThrowIfCancellationRequested();
-
-                ObexPacket packet = await ObexPacket.ReadFromStream<ObexConnectPacket>(_reader);
-                if (packet.Opcode.ObexOperation == ObexOperation.Connect)
-                {
-                    if (packet.Headers.TryGetValue(HeaderId.Target, out ObexHeader? header))
+            ObexPacket packet = await ObexPacket.ReadFromStream<ObexConnectPacket>(Reader);
+            if (packet.Opcode.ObexOperation == ObexOperation.Connect)
+                if (packet.Headers.TryGetValue(HeaderId.Target, out var header))
+                    if (header.Buffer.ToArray().SequenceEqual(_serviceUuid.Value))
                     {
-                        if (Enumerable.SequenceEqual(header.Buffer.ToArray(), _serviceUuid.Value))
-                        {
-                            packet.Opcode = new ObexOpcode(ObexOperation.Success, true);
-                            packet.WriteToStream(_writer);
-                            await _writer.StoreAsync();
-                            break;
-                        }
+                        packet.Opcode = new ObexOpcode(ObexOperation.Success, true);
+                        packet.WriteToStream(Writer);
+                        await Writer.StoreAsync();
+                        break;
                     }
-                }
 
-                packet = new ObexPacket(new ObexOpcode(ObexOperation.ServiceUnavailable, true));
-                packet.WriteToStream(_writer);
-            }
+            packet = new ObexPacket(new ObexOpcode(ObexOperation.ServiceUnavailable, true));
+            packet.WriteToStream(Writer);
+        }
 
-            while (true)
+        while (true)
+        {
+            Cts.Token.ThrowIfCancellationRequested();
+
+            var packet = await ObexPacket.ReadFromStream(Reader);
+
+            var response = OnClientRequest(packet);
+            if (response != null)
             {
-                _cts.Token.ThrowIfCancellationRequested();
-
-                ObexPacket packet = await ObexPacket.ReadFromStream(_reader);
-
-                ObexPacket? response = OnClientRequest(packet);
-                if (response != null)
-                {
-                    response.WriteToStream(_writer);
-                    await _writer.StoreAsync();
-                }
-                else
-                {
-                    _writer.WriteByte(0xC6); // Not Acceptable
-                    _writer.WriteUInt16(3);
-                    await _writer.StoreAsync();
-                }
+                response.WriteToStream(Writer);
             }
-        }
+            else
+            {
+                Writer.WriteByte(0xC6); // Not Acceptable
+                Writer.WriteUInt16(3);
+            }
 
-        public void StopServer()
-        {
-            _cts.Cancel();
+            await Writer.StoreAsync();
         }
+    }
 
-        public virtual void CancelTransfer() { }
+    public void StopServer()
+    {
+        Cts.Cancel();
+    }
 
-        /// <summary>
-        /// Handle client request.
-        /// </summary>
-        /// <remarks>
-        /// This method will be called whenever a client request arrived.
-        /// </remarks>
-        /// <param name="clientRequestPacket"></param>
-        /// <returns>
-        /// The OBEX response packet. If the server doesn't know how to handle this client request, return null.
-        /// </returns>
-        protected virtual ObexPacket? OnClientRequest(ObexPacket clientRequestPacket)
-        {
-            return null;
-        }
+    public virtual void CancelTransfer() { }
+
+    /// <summary>
+    ///     Handle client request.
+    /// </summary>
+    /// <remarks>
+    ///     This method will be called whenever a client request arrived.
+    /// </remarks>
+    /// <param name="clientRequestPacket"></param>
+    /// <returns>
+    ///     The OBEX response packet. If the server doesn't know how to handle this client request, return null.
+    /// </returns>
+    protected virtual ObexPacket? OnClientRequest(ObexPacket clientRequestPacket)
+    {
+        return null;
     }
 }

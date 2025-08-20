@@ -4,102 +4,99 @@ using System.Threading;
 using System.Xml;
 using Windows.Storage.Streams;
 
-namespace GoodTimeStudio.MyPhone.OBEX
+namespace GoodTimeStudio.MyPhone.OBEX.Map;
+
+public class MessageReceivedEventArgs
 {
-    public class MessageReceivedEventArgs
+    public MessageReceivedEventArgs(
+        string eventType,
+        string messageType,
+        string folder,
+        string messageHandle
+    )
     {
-        public string EventType { get; set; } = "";
-        public string MessageType { get; set; } = "";
-        public string MessageHandle { get; set; } = "";
-        public string Folder { get; set; } = "";
-
-        public MessageReceivedEventArgs(
-            string eventType,
-            string messageType,
-            string folder,
-            string messageHandle
-        )
-        {
-            EventType = eventType;
-            MessageType = messageType;
-            Folder = folder;
-            MessageHandle = messageHandle;
-        }
-
-        public MessageReceivedEventArgs() { }
-
-        public static MessageReceivedEventArgs Parse(string xmlDoc)
-        {
-            XmlDocument doc = new XmlDocument();
-            doc.LoadXml(xmlDoc);
-
-            var messageEventArgs = new MessageReceivedEventArgs();
-
-            foreach (var item in new List<string>() { "handle", "type", "folder", "msg_type" })
-            {
-                var singleNode = doc.SelectSingleNode("/MAP-event-report/event/@" + item);
-                if (singleNode == null || singleNode.Value == null)
-                    if (item == "handle")
-                        return null;
-                    else
-                        continue;
-
-                switch (item)
-                {
-                    case "handle":
-                        messageEventArgs.MessageHandle = singleNode.Value;
-                        break;
-                    case "type":
-                        messageEventArgs.EventType = singleNode.Value;
-                        break;
-                    case "folder":
-                        messageEventArgs.Folder = singleNode.Value;
-                        break;
-                    case "msg_type":
-                        messageEventArgs.MessageType = singleNode.Value;
-                        break;
-                }
-            }
-
-            return messageEventArgs;
-        }
+        EventType = eventType;
+        MessageType = messageType;
+        Folder = folder;
+        MessageHandle = messageHandle;
     }
 
-    public class MnsServer : ObexServer
+    public MessageReceivedEventArgs() { }
+
+    public string EventType { get; set; } = "";
+    public string MessageType { get; set; } = "";
+    public string MessageHandle { get; set; } = "";
+    public string Folder { get; set; } = "";
+
+    public static MessageReceivedEventArgs Parse(string xmlDoc)
     {
-        public MnsServer(
-            IInputStream inputStream,
-            IOutputStream outputStream,
-            CancellationTokenSource token
-        )
-            : base(inputStream, outputStream, ObexServiceUuid.MessageNotification, token) { }
+        var doc = new XmlDocument();
+        doc.LoadXml(xmlDoc);
 
-        public delegate void MnsMessageReceivedEventHandler(
-            object sender,
-            MessageReceivedEventArgs e
-        );
-        public event MnsMessageReceivedEventHandler? MessageReceived;
+        var messageEventArgs = new MessageReceivedEventArgs();
 
-        protected override ObexPacket? OnClientRequest(ObexPacket clientRequestPacket)
+        foreach (var item in new List<string> { "handle", "type", "folder", "msg_type" })
         {
-            _cts.Token.ThrowIfCancellationRequested();
+            var singleNode = doc.SelectSingleNode("/MAP-event-report/event/@" + item);
+            if (singleNode?.Value == null)
+                if (item == "handle")
+                    return null;
+                else
+                    continue;
 
-            if (clientRequestPacket.Opcode.ObexOperation == ObexOperation.Put)
+            switch (item)
             {
-                if (!clientRequestPacket.Headers.TryGetValue(HeaderId.Body, out var body))
-                    return null;
-                if (body.Buffer.Length == 0)
-                    return null;
-
-                var eventXml = Encoding.UTF8.GetString(body.Buffer);
-                var messageEventArgs = MessageReceivedEventArgs.Parse(eventXml);
-                if (messageEventArgs == null)
-                    return null;
-
-                MessageReceived?.Invoke(this, messageEventArgs);
+                case "handle":
+                    messageEventArgs.MessageHandle = singleNode.Value;
+                    break;
+                case "type":
+                    messageEventArgs.EventType = singleNode.Value;
+                    break;
+                case "folder":
+                    messageEventArgs.Folder = singleNode.Value;
+                    break;
+                case "msg_type":
+                    messageEventArgs.MessageType = singleNode.Value;
+                    break;
             }
-
-            return clientRequestPacket;
         }
+
+        return messageEventArgs;
+    }
+}
+
+public class MnsServer : ObexServer
+{
+    public delegate void MnsMessageReceivedEventHandler(object sender, MessageReceivedEventArgs e);
+
+    public MnsServer(
+        IInputStream inputStream,
+        IOutputStream outputStream,
+        CancellationTokenSource token
+    )
+        : base(inputStream, outputStream, ObexServiceUuid.MessageNotification, token) { }
+
+    public event MnsMessageReceivedEventHandler? MessageReceived;
+
+    protected override ObexPacket? OnClientRequest(ObexPacket clientRequestPacket)
+    {
+        Cts.Token.ThrowIfCancellationRequested();
+
+        if (clientRequestPacket.Opcode.ObexOperation == ObexOperation.Put)
+        {
+            if (!clientRequestPacket.Headers.TryGetValue(HeaderId.Body, out var body))
+                return null;
+            if (body.Buffer.Length == 0)
+                return null;
+
+            var eventXml = Encoding.UTF8.GetString(body.Buffer);
+            var messageEventArgs = MessageReceivedEventArgs.Parse(eventXml);
+            if (messageEventArgs == null)
+                return null;
+
+            MessageReceived?.Invoke(this, messageEventArgs);
+        }
+
+        return clientRequestPacket;
     }
 }

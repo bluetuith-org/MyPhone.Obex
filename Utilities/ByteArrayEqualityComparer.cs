@@ -1,39 +1,29 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 
-namespace GoodTimeStudio.MyPhone.OBEX.Utilities
+namespace GoodTimeStudio.MyPhone.OBEX.Utilities;
+
+public class ByteArrayEqualityComparer : IEqualityComparer<byte[]>
 {
-    public class ByteArrayEqualityComparer : IEqualityComparer<byte[]>
+    public static ByteArrayEqualityComparer Default { get; } = new();
+
+    public bool Equals(byte[]? x, byte[]? y)
     {
-        private static readonly ByteArrayEqualityComparer s_comparer =
-            new ByteArrayEqualityComparer();
-        public static ByteArrayEqualityComparer Default
-        {
-            get => s_comparer;
-        }
+        if (x == y)
+            return true;
+        if (x == null || y == null)
+            return false;
+        return x.SequenceEqual(y);
+    }
 
-        public bool Equals(byte[]? x, byte[]? y)
+    public int GetHashCode(byte[] obj)
+    {
+        unchecked
         {
-            if (x == y)
-            {
-                return true;
-            }
-            if (x == null || y == null)
-            {
-                return false;
-            }
-            return Enumerable.SequenceEqual(x, y);
-        }
-
-        public int GetHashCode(byte[] obj)
-        {
-            unchecked
-            {
-                var result = 0;
-                foreach (byte b in obj)
-                    result = (result * 31) ^ b;
-                return result;
-            }
+            var result = 0;
+            foreach (var b in obj)
+                result = (result * 31) ^ b;
+            return result;
         }
     }
 }

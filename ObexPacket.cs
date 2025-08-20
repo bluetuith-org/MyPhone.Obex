@@ -1,216 +1,204 @@
 ﻿using System;
-using System.Buffers.Binary;
 using System.Collections.Generic;
-using System.IO;
-using System.Reflection.Emit;
-using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
-using GoodTimeStudio.MyPhone.OBEX;
 using GoodTimeStudio.MyPhone.OBEX.Headers;
 using GoodTimeStudio.MyPhone.OBEX.Streams;
 using GoodTimeStudio.MyPhone.OBEX.Utilities;
-using MixERP.Net.VCards.Types;
-using Windows.Foundation;
 using Windows.Storage.Streams;
-using Windows.System.UserProfile;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
-namespace GoodTimeStudio.MyPhone.OBEX
+namespace GoodTimeStudio.MyPhone.OBEX;
+
+public class ObexPacket
 {
-    public class ObexPacket
+    private byte[]? _bodyBuffer;
+
+    public readonly Dictionary<HeaderId, ObexHeader> Headers;
+
+    public ObexPacket()
+        : this(new ObexOpcode(ObexOperation.Abort, true)) { }
+
+    public ObexPacket(ObexOpcode op)
     {
-        public ObexOpcode Opcode { get; set; }
+        Opcode = op;
+        Headers = new Dictionary<HeaderId, ObexHeader>();
+    }
 
-        /// <summary>
-        /// Will only be updated after calling ToBuffer()
-        /// </summary>
-        public ushort PacketLength { get; private set; }
+    public ObexPacket(ObexOpcode op, params ObexHeader[] headers)
+        : this(op)
+    {
+        foreach (var h in headers)
+            Headers[h.HeaderId] = h;
+    }
 
-        public Dictionary<HeaderId, ObexHeader> Headers;
+    public ObexOpcode Opcode { get; set; }
 
-        public byte[] BodyBuffer
+    /// <summary>
+    ///     Will only be updated after calling ToBuffer()
+    /// </summary>
+    public ushort PacketLength { get; private set; }
+
+    public byte[] BodyBuffer
+    {
+        get => _bodyBuffer ?? throw new ObexException("Body does not exists");
+        set => _bodyBuffer = value;
+    }
+
+    public ObexHeader GetHeader(HeaderId headerId)
+    {
+        if (Headers.TryGetValue(headerId, out var header))
+            return header;
+
+        throw new ObexHeaderNotFoundException(headerId);
+    }
+
+    public void AddHeader(ObexHeader header)
+    {
+        Headers.Add(header.HeaderId, header);
+    }
+
+    public void ReplaceHeader(HeaderId oldHeaderId, ObexHeader newHeader)
+    {
+        ArgumentNullException.ThrowIfNull(newHeader);
+
+        Headers.Remove(oldHeaderId);
+        Headers.Add(newHeader.HeaderId, newHeader);
+    }
+
+    public T GetBodyContent<T>(IBufferContentInterpreter<T> interpreter)
+    {
+        return interpreter.GetValue(BodyBuffer);
+    }
+
+    public string GetBodyContentAsUtf8String(bool stringIsNullTerminated)
+    {
+        return GetBodyContent(new StringInterpreter(Encoding.UTF8, stringIsNullTerminated));
+    }
+
+    public string GetBodyContentAsUnicodeString(bool stringIsNullTerminated)
+    {
+        return GetBodyContent(
+            new StringInterpreter(Encoding.BigEndianUnicode, stringIsNullTerminated)
+        );
+    }
+
+    protected virtual byte[] GetExtraField()
+    {
+        return null!;
+    }
+
+    /// <summary>
+    ///     Read extra field after the length field
+    /// </summary>
+    /// <param name="reader"></param>
+    /// <returns>The number of bits required for extra bits</returns>
+    protected virtual Task<uint> ReadExtraField(DataReader reader)
+    {
+        return Task.FromResult<uint>(0);
+    }
+
+    public void WriteToStream(IDataWriter writer)
+    {
+        PacketLength = sizeof(ObexOperation) + sizeof(ushort);
+
+        var extra = GetExtraField();
+        if (extra != null)
+            PacketLength += (ushort)extra.Length;
+
+        foreach (var header in Headers.Values)
+            PacketLength += (ushort)header.GetVariableLength();
+
+        writer.WriteByte(Opcode.Value);
+        writer.WriteUInt16(PacketLength);
+
+        if (extra != null)
+            writer.WriteBytes(extra);
+
+        foreach (var header in Headers.Values)
+            header.WriteToStream(writer);
+    }
+
+    private async Task ParseHeader(DataReader reader, uint headerSize)
+    {
+        if (headerSize <= 0)
+            return;
+
+        var sizeToRead = headerSize;
+        while (sizeToRead > 0)
         {
-            get => _bodyBuffer ?? throw new ObexException("Body does not exists");
-            set => _bodyBuffer = value;
-        }
-        private byte[]? _bodyBuffer;
-
-        public ObexPacket()
-            : this(new ObexOpcode(ObexOperation.Abort, true)) { }
-
-        public ObexPacket(ObexOpcode op)
-        {
-            Opcode = op;
-            Headers = new Dictionary<HeaderId, ObexHeader>();
-        }
-
-        public ObexPacket(ObexOpcode op, params ObexHeader[] headers)
-            : this(op)
-        {
-            foreach (ObexHeader h in headers)
-            {
-                Headers[h.HeaderId] = h;
-            }
-        }
-
-        public ObexHeader GetHeader(HeaderId headerId)
-        {
-            if (Headers.TryGetValue(headerId, out ObexHeader? header))
-            {
-                return header;
-            }
-            else
-            {
-                throw new ObexHeaderNotFoundException(headerId);
-            }
-        }
-
-        public void AddHeader(ObexHeader header) => Headers.Add(header.HeaderId, header);
-
-        public void ReplaceHeader(HeaderId oldHeaderId, ObexHeader newHeader)
-        {
-            ArgumentNullException.ThrowIfNull(newHeader);
-
-            Headers.Remove(oldHeaderId);
-            Headers.Add(newHeader.HeaderId, newHeader);
-        }
-
-        public T GetBodyContent<T>(IBufferContentInterpreter<T> interpreter) =>
-            interpreter.GetValue(BodyBuffer);
-
-        public string GetBodyContentAsUtf8String(bool stringIsNullTerminated) =>
-            GetBodyContent(
-                new StringInterpreter(System.Text.Encoding.UTF8, stringIsNullTerminated)
-            );
-
-        public string GetBodyContentAsUnicodeString(bool stringIsNullTerminated) =>
-            GetBodyContent(
-                new StringInterpreter(System.Text.Encoding.BigEndianUnicode, stringIsNullTerminated)
-            );
-
-        protected virtual byte[] GetExtraField()
-        {
-            return null!;
-        }
-
-        /// <summary>
-        /// Read extra field after the length field
-        /// </summary>
-        /// <param name="reader"></param>
-        /// <returns>The number of bits required for extra bits</returns>
-        protected virtual Task<uint> ReadExtraField(DataReader reader) => Task.FromResult<uint>(0);
-
-        public void WriteToStream(IDataWriter writer)
-        {
-            ushort len = (sizeof(ObexOperation) + sizeof(ushort));
-
-            var extra = GetExtraField();
-            if (extra != null)
-                len += (ushort)extra.Length;
-
-            foreach (ObexHeader header in Headers.Values)
-                len += (ushort)header.GetVariableLength();
-
-            PacketLength = len;
-
-            writer.WriteByte(Opcode.Value);
-            writer.WriteUInt16(len);
-
-            if (extra != null)
-                writer.WriteBytes(extra);
-
-            foreach (ObexHeader header in Headers.Values)
-                header.WriteToStream(writer);
-        }
-
-        private async Task ParseHeader(DataReader reader, uint headerSize)
-        {
-            if (headerSize <= 0)
-            {
-                return;
-            }
-
-            uint sizeToRead = headerSize;
-            while (sizeToRead > 0)
-            {
-                uint loaded = await reader.LoadAsync(headerSize);
-                if (loaded == 0)
-                {
-                    throw new ObexException(
-                        "The underlying socket was closed before we were able to read the whole data."
-                    );
-                }
-                sizeToRead -= loaded;
-            }
-
-            while (reader.UnconsumedBufferLength > 0)
-            {
-                ObexHeader header = ObexHeader.ReadFromStream(reader);
-                Headers[header.HeaderId] = header;
-            }
-        }
-
-        public static Task<ObexPacket> ReadFromStream(DataReader reader) =>
-            ReadFromStream<ObexPacket>(reader);
-
-        /// <summary>
-        /// Read and parse OBEX packet from DataReader
-        /// </summary>
-        /// <param name="reader"></param>
-        /// <param name="packet">Optional, if this parameter is not null, the data will be read into this parameter</param>
-        /// <returns>Loaded OBEX packet</returns>
-        public async static Task<T> ReadFromStream<T>(DataReader reader)
-            where T : ObexPacket, new()
-        {
-            uint loaded = await reader.LoadAsync(1);
-            if (loaded != 1)
-            {
+            var loaded = await reader.LoadAsync(headerSize);
+            if (loaded == 0)
                 throw new ObexException(
                     "The underlying socket was closed before we were able to read the whole data."
                 );
-            }
-
-            ObexOpcode opcode = new(reader.ReadByte());
-            T packet = new T();
-            packet.Opcode = opcode;
-
-            loaded = await reader.LoadAsync(sizeof(ushort));
-            if (loaded != sizeof(ushort))
-            {
-                throw new ObexException(
-                    "The underlying socket was closed before we were able to read the whole data."
-                );
-            }
-
-            packet.PacketLength = reader.ReadUInt16();
-
-            uint extraFieldBits = await packet.ReadExtraField(reader);
-            uint size =
-                packet.PacketLength - (uint)sizeof(ObexOperation) - sizeof(ushort) - extraFieldBits;
-            await packet.ParseHeader(reader, size);
-            return packet;
+            sizeToRead -= loaded;
         }
 
-        public override bool Equals(object? obj) =>
-            obj is ObexPacket packet
+        while (reader.UnconsumedBufferLength > 0)
+        {
+            var header = ObexHeader.ReadFromStream(reader);
+            Headers[header.HeaderId] = header;
+        }
+    }
+
+    public static Task<ObexPacket> ReadFromStream(DataReader reader)
+    {
+        return ReadFromStream<ObexPacket>(reader);
+    }
+
+    /// <summary>
+    ///     Read and parse OBEX packet from DataReader
+    /// </summary>
+    /// <param name="reader"></param>
+    /// <returns>Loaded OBEX packet</returns>
+    public static async Task<T> ReadFromStream<T>(DataReader reader)
+        where T : ObexPacket, new()
+    {
+        var loaded = await reader.LoadAsync(1);
+        if (loaded != 1)
+            throw new ObexException(
+                "The underlying socket was closed before we were able to read the whole data."
+            );
+
+        ObexOpcode opcode = new(reader.ReadByte());
+        var packet = new T();
+        packet.Opcode = opcode;
+
+        loaded = await reader.LoadAsync(sizeof(ushort));
+        if (loaded != sizeof(ushort))
+            throw new ObexException(
+                "The underlying socket was closed before we were able to read the whole data."
+            );
+
+        packet.PacketLength = reader.ReadUInt16();
+
+        var extraFieldBits = await packet.ReadExtraField(reader);
+        var size =
+            packet.PacketLength - (uint)sizeof(ObexOperation) - sizeof(ushort) - extraFieldBits;
+        await packet.ParseHeader(reader, size);
+        return packet;
+    }
+
+    public override bool Equals(object? obj)
+    {
+        return obj is ObexPacket packet
             && EqualityComparer<ObexOpcode>.Default.Equals(Opcode, packet.Opcode)
             && PacketLength == packet.PacketLength
             && DictionaryEqualityComparer<HeaderId, ObexHeader>.Default.Equals(
                 Headers,
                 packet.Headers
             );
+    }
 
-        public override int GetHashCode()
-        {
-            int hashCode = 467068145;
-            hashCode =
-                hashCode * -1521134295 + EqualityComparer<ObexOpcode>.Default.GetHashCode(Opcode);
-            hashCode = hashCode * -1521134295 + PacketLength.GetHashCode();
-            hashCode =
-                hashCode * -1521134295
-                + EqualityComparer<Dictionary<HeaderId, ObexHeader>>.Default.GetHashCode(Headers);
-            return hashCode;
-        }
+    public override int GetHashCode()
+    {
+        var hashCode = 467068145;
+        hashCode =
+            hashCode * -1521134295 + EqualityComparer<ObexOpcode>.Default.GetHashCode(Opcode);
+        hashCode = hashCode * -1521134295 + PacketLength.GetHashCode();
+        hashCode =
+            hashCode * -1521134295
+            + EqualityComparer<Dictionary<HeaderId, ObexHeader>>.Default.GetHashCode(Headers);
+        return hashCode;
     }
 }

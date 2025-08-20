@@ -1,30 +1,21 @@
 ﻿using System.Collections.Generic;
 
-namespace GoodTimeStudio.MyPhone.OBEX.Map
+namespace GoodTimeStudio.MyPhone.OBEX.Map;
+
+public class SmsFolder(string folderName, int messageCount, SmsFolder? parent = null)
 {
-    public class SmsFolder
-    {
-        public string Name { get; }
+    public SmsFolder(string folderName, SmsFolder? parent = null)
+        : this(folderName, 0, parent) { }
 
-        /// <summary>
-        /// Number of accessible messages in this folder
-        /// </summary>
-        public int MessageCount { get; }
-        public IList<SmsFolder> Children { get; }
-        public IList<MessageListing> MessageHandles { get; }
+    public string Name { get; } = folderName;
 
-        public SmsFolder? Parent { get; }
+    /// <summary>
+    ///     Number of accessible messages in this folder
+    /// </summary>
+    public int MessageCount { get; } = messageCount;
 
-        public SmsFolder(string folderName, int messageCount, SmsFolder? parent = null)
-        {
-            Name = folderName;
-            MessageCount = messageCount;
-            Children = new List<SmsFolder>();
-            MessageHandles = new List<MessageListing>();
-            Parent = parent;
-        }
+    public IList<SmsFolder> Children { get; } = new List<SmsFolder>();
+    public IList<MessageListing> MessageHandles { get; } = new List<MessageListing>();
 
-        public SmsFolder(string folderName, SmsFolder? parent = null)
-            : this(folderName, 0, parent) { }
-    }
+    public SmsFolder? Parent { get; } = parent;
 }
