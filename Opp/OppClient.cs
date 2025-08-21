@@ -51,7 +51,7 @@ public class OppClient : ObexClient
         CancellationTokenSource = new CancellationTokenSource();
     }
 
-    public async Task SendFile(string fileName)
+    public async Task SendFile(string fileName, string sid, string tid)
     {
         CancellationTokenSource.Token.ThrowIfCancellationRequested();
 
@@ -76,6 +76,8 @@ public class OppClient : ObexClient
             Name = filename,
             FileName = fileName,
             FileSize = file.Length,
+            SessionId = sid,
+            TransferId = tid,
         };
 
         var request = new ObexPacket(
@@ -172,6 +174,9 @@ public class OppClient : ObexClient
         public long BytesTransferred { get; set; }
         public bool TransferDone { get; set; }
         public bool Error { get; set; }
+
+        public string SessionId { get; set; }
+        public string TransferId { get; set; }
 
         public bool Queued { get; set; }
     }

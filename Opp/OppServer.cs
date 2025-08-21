@@ -119,6 +119,8 @@ public class OppServer : ObexServer
                                 ? Path.Combine(Path.GetDirectoryName(file.Name)!, filename)
                                 : Path.Combine(_destinationDirectory, filename);
 
+                        data.FileName = filename;
+
                         if (firstPut)
                         {
                             SendObexReceiveEvent(data with { FileName = filename, Queued = true });
@@ -215,7 +217,7 @@ public class OppServer : ObexServer
         if (string.IsNullOrEmpty(src) || string.IsNullOrEmpty(dest) || src == dest)
             return;
 
-        new FileInfo(src).MoveTo(dest);
+        new FileInfo(src).MoveTo(dest, true);
     }
 
     private static (string FileName, int FileSize, bool IsFinal, byte[] buffer) GetPacketInfo(
@@ -244,12 +246,6 @@ public class OppServer : ObexServer
                 throw new Exception(
                     "Invalid first packet from remote device. Filename is empty and/or file size is zero."
                 );
-
-            actualFileName = string.Concat(
-                Path.GetFileNameWithoutExtension(actualFileName),
-                $"{DateTime.Now:yyyy-MM-dd_HH-mm-ss}",
-                Path.GetExtension(actualFileName)
-            );
         }
 
         return (
